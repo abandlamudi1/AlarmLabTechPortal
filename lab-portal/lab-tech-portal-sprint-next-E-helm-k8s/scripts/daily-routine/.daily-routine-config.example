@@ -1,0 +1,72 @@
+# Daily Routine Configuration - Lab Tech Portal
+# Copy this file to .daily-routine-config and customize for your needs
+
+# =============================================================================
+# PROJECT SETTINGS
+# =============================================================================
+
+# Your project display name
+PROJECT_NAME="Lab Tech Portal"
+
+# GitHub organization
+GITHUB_ORG="adc-quality"
+
+# GitHub project board number (from project URL)
+GITHUB_PROJECT_ID="23"
+
+# Default branch to work on (master or main)
+DEFAULT_BRANCH="master"
+
+# =============================================================================
+# DIRECTORY SETTINGS
+# =============================================================================
+
+# Where your project stores changelogs (leave empty if none)
+CHANGELOG_DIR="changelogs"
+
+# Where scripts are located (relative to project root)
+SCRIPTS_DIR="scripts"
+
+# =============================================================================
+# PYTHON ENVIRONMENT SETTINGS
+# =============================================================================
+
+# Python command (python3 or python)
+PYTHON_CMD="python3"
+
+# Requirements file to check
+REQUIREMENTS_FILE="requirements.txt"
+
+# Virtual environment directory (optional)
+VENV_DIR=".venv"
+
+# =============================================================================
+# CONNECTIVITY CHECKS (Optional)
+# =============================================================================
+
+# Enable connectivity checks (true/false)
+ENABLE_CONNECTIVITY_CHECKS="false"
+
+# Path to connection test script (relative to project root)
+TEST_CONNECTIONS_SCRIPT="scripts/test-connections.py"
+
+# =============================================================================
+# GIT SETTINGS
+# =============================================================================
+
+# Number of recent commits to show on start
+RECENT_COMMITS="5"
+
+# Number of days of changelogs to check
+CHANGELOG_DAYS="3"
+
+# =============================================================================
+# OPTIONAL SKIP FLAGS
+# =============================================================================
+
+# Skip specific checks (set to "true" to skip)
+SKIP_CHANGELOG_CHECK="false"
+SKIP_CONNECTIVITY="false"
+SKIP_PROJECT_BOARD="false"
+SKIP_BRANCH_CHECK="false"
+

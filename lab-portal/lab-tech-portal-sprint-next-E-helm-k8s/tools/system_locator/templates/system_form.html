@@ -1,0 +1,601 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if action == 'edit' %}Edit System Profile{% else %}Add System Profile{% endif %}{% endblock %}
+
+{% block page_styles %}
+<style>
+    .form-intro {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .system-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .section-card {
+        padding: 18px 22px;
+    }
+
+    .section-card--primary {
+        border: 2px solid rgba(0, 102, 204, 0.35);
+        background: linear-gradient(135deg, rgba(0, 102, 204, 0.08), rgba(255, 255, 255, 0));
+    }
+
+    .section-header {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .section-title {
+        margin: 0;
+        font-size: 1.1em;
+    }
+
+    .section-subtitle {
+        margin: 0;
+        color: var(--muted-text);
+        font-size: 0.9em;
+    }
+
+    .section-body {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-top: 12px;
+    }
+
+    .form-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 16px;
+    }
+
+    .identifier-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .identifier-row {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        gap: 12px;
+    }
+
+    .identifier-actions {
+        display: flex;
+        justify-content: flex-start;
+    }
+
+    .suggested-name {
+        color: var(--muted-text);
+        font-size: 0.85em;
+    }
+
+    textarea {
+        min-height: 110px;
+    }
+
+    @media (max-width: 640px) {
+        .identifier-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('systems.dashboard') }}">System Locator</a>
+{% endblock %}
+
+{% block content %}
+<section class="card form-intro">
+    <h1>{% if action == 'edit' %}Edit System Profile{% else %}Add System Profile{% endif %}</h1>
+    <p>Describe the physical system, starting with where it lives, so teams can find it fast.</p>
+
+    {% if message %}
+    <div class="notice {% if status == 'success' %}notice-success{% else %}notice-error{% endif %}">
+        {{ message }}
+    </div>
+    {% endif %}
+
+    {% if errors %}
+    <div class="notice notice-error">
+        <strong>Fix the highlighted fields.</strong>
+        <ul>
+            {% for field, message in errors.items() %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</section>
+
+<form method="post" class="system-form" id="systemForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if form.jira_issue_key %}
+    <input type="hidden" name="jira_issue_key" value="{{ form.jira_issue_key }}">
+    {% endif %}
+
+    <section class="card section-card section-card--primary">
+        <div class="section-header">
+            <h2 class="section-title">Location</h2>
+            <p class="section-subtitle">Location number and name are linked automatically.</p>
+        </div>
+        <div class="section-body">
+            <div class="form-grid-2">
+                <div class="form-field">
+                    <label for="location_number">Location Number <span class="required">*</span></label>
+                    <select id="location_number" name="location_number" aria-invalid="{{ 'true' if errors and errors.get('location') else 'false' }}">
+                        <option value="">Select a location number...</option>
+                        <option value="10-640" {% if form.location_number == '10-640' %}selected{% endif %}>10-640</option>
+                        <option value="10-510" {% if form.location_number == '10-510' %}selected{% endif %}>10-510</option>
+                        <option value="10-630" {% if form.location_number == '10-630' %}selected{% endif %}>10-630</option>
+                        <option value="10-070" {% if form.location_number == '10-070' %}selected{% endif %}>10-070</option>
+                        <option value="11-050" {% if form.location_number == '11-050' %}selected{% endif %}>11-050</option>
+                        <option value="9-070" {% if form.location_number == '9-070' %}selected{% endif %}>9-070</option>
+                        <option value="7-370" {% if form.location_number == '7-370' %}selected{% endif %}>7-370</option>
+                        <option value="6-430" {% if form.location_number == '6-430' %}selected{% endif %}>6-430</option>
+                        <option value="5-030" {% if form.location_number == '5-030' %}selected{% endif %}>5-030</option>
+                        <option value="" {% if form.location_name == 'Panels Team Lab' and not form.location_number %}selected{% endif %}>(No number - Panels Team Lab)</option>
+                    </select>
+                    {% if errors and errors.get('location') %}
+                    <span class="error">{{ errors.get('location') }}</span>
+                    {% endif %}
+                </div>
+                <div class="form-field">
+                    <label for="location_name">Location Name <span class="required">*</span></label>
+                    <select id="location_name" name="location_name" aria-invalid="{{ 'true' if errors and errors.get('location') else 'false' }}">
+                        <option value="">Select a location name...</option>
+                        <option value="Automation Lab" {% if form.location_name == 'Automation Lab' %}selected{% endif %}>Automation Lab</option>
+                        <option value="QE Lab" {% if form.location_name == 'QE Lab' %}selected{% endif %}>QE Lab</option>
+                        <option value="Product Testing Lab" {% if form.location_name == 'Product Testing Lab' %}selected{% endif %}>Product Testing Lab</option>
+                        <option value="Hardware Test Framework Lab" {% if form.location_name == 'Hardware Test Framework Lab' %}selected{% endif %}>Hardware Test Framework Lab</option>
+                        <option value="DE Lab" {% if form.location_name == 'DE Lab' %}selected{% endif %}>DE Lab</option>
+                        <option value="International Lab" {% if form.location_name == 'International Lab' %}selected{% endif %}>International Lab</option>
+                        <option value="Commercial Team Lab" {% if form.location_name == 'Commercial Team Lab' %}selected{% endif %}>Commercial Team Lab</option>
+                        <option value="Mobile/CX Team Lab" {% if form.location_name == 'Mobile/CX Team Lab' %}selected{% endif %}>Mobile/CX Team Lab</option>
+                        <option value="Video Team Lab" {% if form.location_name == 'Video Team Lab' %}selected{% endif %}>Video Team Lab</option>
+                        <option value="Panels Team Lab" {% if form.location_name == 'Panels Team Lab' %}selected{% endif %}>Panels Team Lab</option>
+                    </select>
+                    {% if errors and errors.get('location') and not errors.get('location_number') %}
+                    <span class="error">{{ errors.get('location') }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card section-card">
+        <div class="section-header">
+            <h2 class="section-title">System Details</h2>
+        </div>
+        <div class="section-body">
+            <div class="form-field">
+                <label for="name">System Profile Name <span class="required">*</span></label>
+                <input id="name" name="name" type="text" value="{{ form.name }}" aria-invalid="{{ 'true' if errors and errors.get('name') else 'false' }}" required>
+                <span class="hint">Suggested name shown. Editing is optional.</span>
+                <span class="suggested-name" id="nameSuggestion" aria-live="polite"></span>
+                {% if errors and errors.get('name') %}
+                <span class="error">{{ errors.get('name') }}</span>
+                {% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="status">Status <span class="required">*</span></label>
+                <select id="status" name="status" aria-invalid="{{ 'true' if errors and errors.get('status') else 'false' }}" required>
+                    {% for option in status_choices %}
+                    <option value="{{ option }}" {% if form.status == option %}selected{% endif %}>{{ option }}</option>
+                    {% endfor %}
+                </select>
+                {% if errors and errors.get('status') %}
+                <span class="error">{{ errors.get('status') }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="card section-card">
+        <div class="section-header">
+            <h2 class="section-title">Identifiers</h2>
+            <p class="section-subtitle">Add one or two identifiers people already search for.</p>
+        </div>
+        <div class="section-body">
+            {% if errors and errors.get('identifiers') %}
+            <span class="error">{{ errors.get('identifiers') }}</span>
+            {% endif %}
+            <div class="identifier-list" id="identifierList">
+                {% set existing = form.identifiers or [] %}
+                {% set identifier_options = ['CID', 'Login', 'IMEI', 'MAC', 'Asset Tag', 'Other'] %}
+                {% set total_rows = existing|length + 1 %}
+                {% for i in range(total_rows) %}
+                {% set identifier = existing[i] if i < existing|length else None %}
+                {% set identifier_label = identifier.label if identifier else '' %}
+                {% set identifier_value = identifier.value if identifier else '' %}
+                <div class="identifier-row">
+                    <select name="identifier_label" aria-label="Identifier Type">
+                        <option value="">Identifier type...</option>
+                        {% if identifier_label and identifier_label not in identifier_options %}
+                        <option value="{{ identifier_label }}" selected>{{ identifier_label }}</option>
+                        {% endif %}
+                        {% for option in identifier_options %}
+                        <option value="{{ option }}" {% if identifier_label == option %}selected{% endif %}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                    <input name="identifier_value" type="text" value="{{ identifier_value }}" placeholder="Identifier value" aria-label="Identifier Value">
+                </div>
+                {% endfor %}
+            </div>
+            <div class="identifier-actions">
+                <button class="btn btn-secondary" type="button" id="addIdentifier">+ Add another identifier</button>
+            </div>
+            <template id="identifierRowTemplate">
+                <div class="identifier-row">
+                    <select name="identifier_label" aria-label="Identifier Type">
+                        <option value="">Identifier type...</option>
+                        <option value="CID">CID</option>
+                        <option value="Login">Login</option>
+                        <option value="IMEI">IMEI</option>
+                        <option value="MAC">MAC</option>
+                        <option value="Asset Tag">Asset Tag</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <input name="identifier_value" type="text" placeholder="Identifier value" aria-label="Identifier Value">
+                </div>
+            </template>
+        </div>
+    </section>
+
+    <section class="card section-card">
+        <div class="section-header">
+            <h2 class="section-title">References &amp; Notes</h2>
+            <p class="section-subtitle">Optional details for setup context and follow-up.</p>
+        </div>
+        <div class="section-body">
+            <div class="form-field">
+                <label for="jira_tickets">Linked Jira Tickets</label>
+                <textarea id="jira_tickets" name="jira_tickets" placeholder="QE-12345&#10;QE-23456">{{ form.jira_tickets }}</textarea>
+                <p class="hint">One ticket per line.</p>
+            </div>
+
+            <div class="form-field">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" placeholder="Setup instructions, dependencies, lab contacts...">{{ form.notes }}</textarea>
+            </div>
+        </div>
+    </section>
+
+    <section class="card section-card">
+        <div class="section-header">
+            <h2 class="section-title">Actions</h2>
+        </div>
+        <div class="section-body">
+            <div class="form-actions">
+                <button class="btn" type="submit">Save System Profile</button>
+                <a class="btn btn-secondary" href="{{ url_for('systems.dashboard') }}">Cancel</a>
+            </div>
+        </div>
+    </section>
+</form>
+
+{% if action == 'edit' %}
+<section class="card">
+    <form method="post" action="{{ url_for('systems.delete_system', system_id=system_id) }}" onsubmit="return confirm('Mark this system profile as decommissioned?');" class="delete-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-actions">
+            <button class="btn btn-danger" type="submit">Decommission</button>
+        </div>
+    </form>
+
+    <div class="delete-section">
+        <h3>Danger Zone</h3>
+        <p>Permanently delete this System Profile. This action cannot be undone.</p>
+        <button class="btn btn-danger" type="button" onclick="openDeleteModal()">Delete System Profile</button>
+    </div>
+</section>
+{% endif %}
+{% if action == 'edit' %}
+<!-- PIN Delete Modal -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Confirm Deletion</h2>
+            <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p><strong>Warning:</strong> This will permanently delete the system profile and all associated data. This action cannot be undone.</p>
+            <form method="post" action="{{ url_for('systems.hard_delete_system', system_id=system_id) }}" id="deleteForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-field">
+                    <label for="pin">Enter PIN to confirm deletion</label>
+                    <input id="pin" name="pin" type="password" placeholder="Enter PIN" required autocomplete="off">
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-danger" type="submit">Permanently Delete</button>
+                    <button class="btn btn-secondary" type="button" onclick="closeDeleteModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.delete-section {
+    margin-top: 48px;
+    padding: 24px;
+    border: 2px solid var(--status-error-color);
+    border-radius: 8px;
+    background: var(--status-error-bg);
+}
+
+.delete-section h3 {
+    margin: 0 0 8px;
+    color: var(--status-error-color);
+    font-size: 1.1em;
+}
+
+.delete-section p {
+    margin: 0 0 16px;
+    color: var(--muted-text);
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    animation: fadeIn 0.2s;
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25em;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--muted-text);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--text);
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.modal-body p {
+    margin: 0 0 20px;
+}
+
+.modal-body strong {
+    color: var(--status-error-color);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+</style>
+{% endif %}
+
+<script>
+// HQ Location Map for bidirectional auto-fill
+const locationMap = {
+    "10-640": "Automation Lab",
+    "10-510": "QE Lab",
+    "10-630": "Product Testing Lab",
+    "10-070": "Hardware Test Framework Lab",
+    "11-050": "DE Lab",
+    "9-070": "International Lab",
+    "7-370": "Commercial Team Lab",
+    "6-430": "Mobile/CX Team Lab",
+    "5-030": "Video Team Lab",
+    "": "Panels Team Lab"  // Special case: no number
+};
+
+// Reverse map: name to number
+const nameToNumberMap = {};
+for (const [number, name] of Object.entries(locationMap)) {
+    nameToNumberMap[name] = number;
+}
+
+const locationNumberSelect = document.getElementById('location_number');
+const locationNameSelect = document.getElementById('location_name');
+const nameInput = document.getElementById('name');
+const nameSuggestion = document.getElementById('nameSuggestion');
+const identifierList = document.getElementById('identifierList');
+const addIdentifierButton = document.getElementById('addIdentifier');
+const identifierTemplate = document.getElementById('identifierRowTemplate');
+let nameTouched = nameInput ? nameInput.value.trim() !== '' : false;
+
+const getLocationLabel = () => {
+    const locationNumber = locationNumberSelect ? locationNumberSelect.value.trim() : '';
+    const locationName = locationNameSelect ? locationNameSelect.value.trim() : '';
+    const resolvedName = locationName || locationMap[locationNumber] || '';
+
+    if (resolvedName && locationNumber) {
+        return `${resolvedName} (${locationNumber})`;
+    }
+
+    return resolvedName || locationNumber;
+};
+
+const getIdentifierHint = () => {
+    if (!identifierList) {
+        return '';
+    }
+
+    const rows = identifierList.querySelectorAll('.identifier-row');
+    for (const row of rows) {
+        const label = row.querySelector('select')?.value.trim() || '';
+        const value = row.querySelector('input')?.value.trim() || '';
+        if (value) {
+            const safeLabel = label || 'ID';
+            return `${safeLabel} ${value}`.trim();
+        }
+    }
+
+    return '';
+};
+
+const updateNameSuggestion = (allowAutofill) => {
+    if (!nameSuggestion || !nameInput) {
+        return;
+    }
+
+    const locationLabel = getLocationLabel();
+    const identifierHint = getIdentifierHint();
+    let suggestion = '';
+
+    if (locationLabel) {
+        suggestion = locationLabel;
+        if (identifierHint) {
+            suggestion = `${locationLabel} - ${identifierHint}`;
+        }
+    }
+
+    if (suggestion) {
+        nameSuggestion.textContent = `Suggested name: ${suggestion}`;
+        if (!nameTouched && allowAutofill) {
+            nameInput.value = suggestion;
+        }
+    } else {
+        nameSuggestion.textContent = 'Suggested name will appear once a location is selected.';
+    }
+};
+
+// When location number changes, update location name
+locationNumberSelect.addEventListener('change', function() {
+    const selectedNumber = this.value;
+    const expectedName = locationMap[selectedNumber];
+    
+    if (expectedName) {
+        locationNameSelect.value = expectedName;
+    }
+
+    updateNameSuggestion(true);
+});
+
+// When location name changes, update location number
+locationNameSelect.addEventListener('change', function() {
+    const selectedName = this.value;
+    const expectedNumber = nameToNumberMap[selectedName];
+    
+    if (expectedNumber !== undefined) {
+        locationNumberSelect.value = expectedNumber;
+    }
+
+    updateNameSuggestion(true);
+});
+
+if (nameInput) {
+    nameInput.addEventListener('input', () => {
+        nameTouched = nameInput.value.trim() !== '';
+        updateNameSuggestion(false);
+    });
+}
+
+if (identifierList) {
+    identifierList.addEventListener('input', () => updateNameSuggestion(false));
+}
+
+if (addIdentifierButton && identifierTemplate && identifierList) {
+    addIdentifierButton.addEventListener('click', () => {
+        const fragment = identifierTemplate.content.cloneNode(true);
+        identifierList.appendChild(fragment);
+        const lastRow = identifierList.querySelector('.identifier-row:last-child input');
+        if (lastRow) {
+            lastRow.focus();
+        }
+        updateNameSuggestion(false);
+    });
+}
+
+updateNameSuggestion(true);
+
+{% if action == 'edit' %}
+// Delete Modal Functions
+function openDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.add('show');
+    document.getElementById('pin').focus();
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    modal.classList.remove('show');
+    document.getElementById('pin').value = '';
+}
+
+// Close modal when clicking outside
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        closeDeleteModal();
+    }
+});
+
+// Close modal on Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeDeleteModal();
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

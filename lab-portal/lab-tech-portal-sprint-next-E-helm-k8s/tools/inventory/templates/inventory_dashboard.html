@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Lab Inventory Dashboard{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('inventory.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn" href="{{ url_for('inventory.add_item') }}">Add Item</a>
+<a class="btn" href="{{ url_for('inventory.scan_item') }}">Scan/Update Item</a>
+{% endblock %}
+
+{% block content %}
+<h1>Lab Inventory Dashboard</h1>
+
+<table class="table inventory-table">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Quantity</th>
+        <th>Min Stock</th>
+        <th>QR Code</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+    <tr class="{% if item.quantity <= item.min_stock %}low-stock{% endif %}">
+        <td>{{ item.id }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.description }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.min_stock }}</td>
+        <td>
+            {% if item.qr_code %}
+            <img src="{{ url_for('inventory.qr', filename=item.qr_code) }}" width="80" alt="QR code for {{ item.name }}">
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

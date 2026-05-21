@@ -1,0 +1,384 @@
+basePath: /api/v1
+definitions: {}
+info:
+  contact:
+    email: lab-tech@alarm.com
+  description: JSON REST API for the Lab Tech Portal. Covers inventory, checkout,
+    print requests, systems, and RF chambers.
+  title: Lab Tech Portal API
+  version: 1.0.0
+paths:
+  /audit-log:
+    get:
+      description: '<br/>Query params:<br/>  limit  — max rows to return (default
+        50, capped at 200)<br/>  offset — row offset for pagination (default 0)<br/><br/>Response::<br/><br/>    {"events":
+        [...], "count": N}<br/>'
+      parameters:
+      - default: 50
+        description: Max rows to return (capped at 200)
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Row offset for pagination
+        in: query
+        name: offset
+        type: integer
+      responses:
+        '200':
+          description: List of recent audit events
+          schema:
+            properties:
+              count:
+                type: integer
+              events:
+                items:
+                  type: object
+                type: array
+            type: object
+        '400':
+          description: Invalid limit or offset parameter
+        '401':
+          description: Unauthorized
+        '403':
+          description: Admin role required
+      summary: Return recent audit events.  Admin-only (403 on role mismatch).
+      tags:
+      - audit-log
+  /checkout/equipment:
+    get:
+      description: '<br/>Response::<br/><br/>    {"equipment": [...], "count": N}<br/>'
+      responses:
+        '200':
+          description: List of all checkout equipment
+          schema:
+            properties:
+              count:
+                type: integer
+              equipment:
+                items:
+                  properties:
+                    checked_out_at:
+                      type: string
+                    checked_out_by:
+                      type: string
+                    id:
+                      type: integer
+                    jira_link:
+                      type: string
+                    name:
+                      type: string
+                    return_date:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        '401':
+          description: Unauthorized
+      summary: GET /api/v1/checkout/equipment — return all checkout equipment as JSON.
+      tags:
+      - checkout
+  /checkout/equipment/{item_id}/checkout:
+    post:
+      consumes:
+      - application/json
+      description: '<br/>Request body (JSON):<br/>  user_name   — string, required<br/>  return_date
+        — string (YYYY-MM-DD), required<br/>  jira_link   — string, optional<br/><br/>Response
+        on success (200)::<br/><br/>    {"id": <item_id>, "user_name": ..., "return_date":
+        ...}<br/><br/>Response on validation failure (400)::<br/><br/>    {"error":
+        "field X is required"}<br/><br/>Response when item not found or already checked
+        out (409)::<br/><br/>    {"error": "Item not available for checkout"}<br/>'
+      parameters:
+      - description: Equipment item ID to check out
+        in: path
+        name: item_id
+        required: true
+        type: integer
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            jira_link:
+              description: Optional JIRA ticket link
+              type: string
+            return_date:
+              description: Expected return date (YYYY-MM-DD)
+              format: date
+              type: string
+            user_name:
+              description: Name of the person checking out the item
+              type: string
+          required:
+          - user_name
+          - return_date
+          type: object
+      responses:
+        '200':
+          description: Item checked out successfully
+          schema:
+            properties:
+              id:
+                type: integer
+              return_date:
+                type: string
+              user_name:
+                type: string
+            type: object
+        '400':
+          description: Validation error (missing fields or invalid date format)
+        '401':
+          description: Unauthorized
+        '409':
+          description: Item not available for checkout
+      summary: POST /api/v1/checkout/equipment/<id>/checkout — check out an item.
+      tags:
+      - checkout
+  /inventory/items:
+    get:
+      description: '<br/>Response::<br/><br/>    {"items": [...], "count": N}<br/>'
+      responses:
+        '200':
+          description: List of all inventory items
+          schema:
+            properties:
+              count:
+                type: integer
+              items:
+                items:
+                  properties:
+                    description:
+                      type: string
+                    id:
+                      type: integer
+                    min_stock:
+                      type: integer
+                    name:
+                      type: string
+                    quantity:
+                      type: integer
+                  type: object
+                type: array
+            type: object
+        '401':
+          description: Unauthorized
+      summary: GET /api/v1/inventory/items — return all inventory items as JSON.
+      tags:
+      - inventory
+    post:
+      consumes:
+      - application/json
+      description: '<br/>Request body (JSON):<br/>  name        — string, required<br/>  description
+        — string, optional (default empty string, matching HTML form<br/>                behaviour
+        where description may be omitted)<br/>  quantity    — integer, required (must
+        be >= 0)<br/>  min_stock   — integer, required (must be >= 0)<br/><br/>Response
+        on success (201)::<br/><br/>    {"id": <new_id>, "name": ..., "description":
+        ...,<br/>     "quantity": ..., "min_stock": ...}<br/><br/>Response on validation
+        failure (400)::<br/><br/>    {"error": "field X is required"}<br/>'
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            description:
+              description: Optional description
+              type: string
+            min_stock:
+              description: Minimum stock threshold
+              minimum: 0
+              type: integer
+            name:
+              description: Item name (required)
+              type: string
+            quantity:
+              description: Current quantity
+              minimum: 0
+              type: integer
+          required:
+          - name
+          - quantity
+          - min_stock
+          type: object
+      responses:
+        '201':
+          description: Item created successfully
+          schema:
+            properties:
+              description:
+                type: string
+              id:
+                type: integer
+              min_stock:
+                type: integer
+              name:
+                type: string
+              quantity:
+                type: integer
+            type: object
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+      summary: POST /api/v1/inventory/items — create a new inventory item.
+      tags:
+      - inventory
+  /print-requests:
+    get:
+      description: '<br/>Response::<br/><br/>    {"requests": [...], "count": N}<br/>'
+      responses:
+        '200':
+          description: List of all print requests
+          schema:
+            properties:
+              count:
+                type: integer
+              requests:
+                items:
+                  properties:
+                    description:
+                      type: string
+                    due_date:
+                      type: string
+                    id:
+                      type: integer
+                    quantity:
+                      type: integer
+                    request_type:
+                      type: string
+                    requester:
+                      type: string
+                    team:
+                      type: string
+                  type: object
+                type: array
+            type: object
+        '401':
+          description: Unauthorized
+      summary: GET /api/v1/print-requests — return all print requests as JSON.
+      tags:
+      - print-requests
+    post:
+      consumes:
+      - application/json
+      description: '<br/>Request body (JSON):<br/>  requester    — string, required<br/>  request_type
+        — string, required<br/>  quantity     — integer, optional (default 1)<br/>  team         —
+        string, optional<br/>  description  — string, optional<br/>  due_date     —
+        string (YYYY-MM-DD), optional<br/><br/>Response on success (201)::<br/><br/>    {"id":
+        <new_id>, "requester": ..., "request_type": ...}<br/><br/>Response on validation
+        failure (400)::<br/><br/>    {"error": "field X is required"}<br/>'
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            description:
+              description: Optional description
+              type: string
+            due_date:
+              description: Optional due date (YYYY-MM-DD)
+              format: date
+              type: string
+            quantity:
+              default: 1
+              description: Number of items to print
+              minimum: 1
+              type: integer
+            request_type:
+              description: Type of print request
+              type: string
+            requester:
+              description: Name of the requester
+              type: string
+            team:
+              description: Optional team name
+              type: string
+          required:
+          - requester
+          - request_type
+          type: object
+      responses:
+        '201':
+          description: Print request created successfully
+          schema:
+            properties:
+              id:
+                type: integer
+              request_type:
+                type: string
+              requester:
+                type: string
+            type: object
+        '400':
+          description: Validation error
+        '401':
+          description: Unauthorized
+      summary: POST /api/v1/print-requests — create a new 3D print request.
+      tags:
+      - print-requests
+  /rf-chambers:
+    get:
+      description: '<br/>Response::<br/><br/>    {"chambers": [...], "count": N}<br/>'
+      responses:
+        '200':
+          description: List of all RF chambers
+          schema:
+            properties:
+              chambers:
+                items:
+                  properties:
+                    barcode:
+                      type: string
+                    id:
+                      type: integer
+                    location:
+                      type: string
+                    owner:
+                      type: string
+                    ports:
+                      type: string
+                    purpose:
+                      type: string
+                    size:
+                      type: string
+                  type: object
+                type: array
+              count:
+                type: integer
+            type: object
+        '401':
+          description: Unauthorized
+      summary: GET /api/v1/rf-chambers — return all RF chambers as JSON.
+      tags:
+      - rf-chambers
+  /systems:
+    get:
+      description: '<br/>Response::<br/><br/>    {"systems": [...], "count": N}<br/>'
+      responses:
+        '200':
+          description: List of all systems
+          schema:
+            properties:
+              count:
+                type: integer
+              systems:
+                items:
+                  type: object
+                type: array
+            type: object
+        '401':
+          description: Unauthorized
+      summary: GET /api/v1/systems — return all systems as JSON.
+      tags:
+      - systems
+schemes:
+- http
+- https
+securityDefinitions:
+  sessionAuth:
+    description: Okta SSO session cookie (set by /auth/callback)
+    in: cookie
+    name: session
+    type: apiKey
+swagger: '2.0'

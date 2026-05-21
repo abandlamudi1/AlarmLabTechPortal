@@ -1,0 +1,23 @@
+# Project Configuration
+PROJECT_NAME="Lab Tech Portal"
+GITHUB_ORG="adc-quality"
+GITHUB_PROJECT_ID="23"  # GitHub project number
+CHANGELOG_DIR="changelogs"  # Where changelogs are stored
+
+# Python Environment Settings
+PYTHON_CMD="${PYTHON_CMD:-python3}"  # Python command (python3 or python)
+REQUIREMENTS_FILE="requirements.txt"  # Requirements file to check
+VENV_DIR=".venv"  # Virtual environment directory (optional)
+
+# Git Settings
+DEFAULT_BRANCH="master"
+RECENT_COMMITS="5"
+CHANGELOG_DAYS="3"
+
+# Optional: Custom scripts to run
+HEALTH_CHECK_SCRIPT=""  # scripts/health-check.py
+TEST_CONNECTIONS_SCRIPT=""  # scripts/test-connections.py
+
+# Skip certain checks if needed
+SKIP_CHANGELOG_CHECK="false"
+ENABLE_CONNECTIVITY_CHECKS="false"  # Set to true if you have connectivity test scripts

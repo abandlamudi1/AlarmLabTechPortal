@@ -1,0 +1,81 @@
+# skill-config.yml — Shared constants for all .claude/skills/*/SKILL.md files.
+#
+# RESOLUTION MECHANISM (Option A — Read-then-resolve):
+#   Each skill's Step 0 instructs the agent to read this file at invocation time.
+#   Every $CONFIG.foo.bar reference in a SKILL.md is a textual lookup into this
+#   file's YAML structure — resolved mentally by the agent as it reads the skill.
+#   No templating engine or pre-processor is involved. The agent substitutes
+#   $CONFIG.github.project_number → 23, $CONFIG.repo → adc-quality/lab-tech-portal,
+#   etc. wherever those tokens appear in commands, queries, or file paths.
+#
+# PROJECT BOARD FIELD-ID NAMESPACES:
+#   IDs starting with PVTSSF_lADODlOvwc4BOhf-  belong to Project #23 (main project board).
+#   IDs starting with PVTSSF_lADODlOvwc4BPI7E  belong to Project #26 (deferred-items board).
+#   Never mix them — they route mutations to different boards.
+#
+# PORTING:
+#   To port .claude/skills/ to a new project, edit only this file.
+#   All SKILL.md files use $CONFIG.* references and will pick up new values
+#   automatically when re-read by an agent.
+#
+# WHAT TO PARAMETERIZE:
+#   Only command/query parameters consumed by skills should use $CONFIG.* — gh CLI
+#   flags, GraphQL inputs, file paths used as variables. DO NOT parameterize markdown
+#   link text: the read-then-resolve mechanism doesn't substitute at render time, so
+#   "$CONFIG.sprint.friction_file" would display literally to humans. Link targets
+#   (URLs/paths) should also stay literal — markdown rendering can't follow a placeholder.
+#
+#   Parameterize OK:    gh api graphql -F number=$CONFIG.github.project_number
+#   Parameterize NOT:   [docs/guide-friction.md]($CONFIG.sprint.friction_file)
+
+repo: adc-quality/lab-tech-portal
+
+github:
+  org: adc-quality  # owner segment of $CONFIG.repo; used by `gh api graphql organization(login: …)` queries
+  project_number: 23
+  project_id: PVT_kwDODlOvwc4BOhf-
+  status_field_id: PVTSSF_lADODlOvwc4BOhf-zg9M4Eo
+  # Option IDs quoted defensively: PyYAML (YAML 1.1) parses leading-zero
+  # all-digit scalars as octal integers (e.g. p2: 03271471 → int 881465),
+  # silently corrupting the GitHub option ID. Quotes keep them as strings.
+  status_options:
+    todo: "f75ad846"
+    in_progress: "47fc9ee4"
+    done: "98236657"
+  # Project #23 fields — used by /create-issue. defer_* keys are Project #26 — keep separate.
+  priority_field_id: PVTSSF_lADODlOvwc4BOhf-zg9M4IE
+  priority_options:
+    p0: "e8e3f65a"
+    p1: "ef2fb57a"
+    p2: "03271471"
+    p3: "f80af26b"
+    p4: "303336e7"
+  size_field_id: PVTSSF_lADODlOvwc4BOhf-zg9M4II
+  size_options:
+    xs: "0beb35cf"
+    s: "6236dd70"
+    m: "228d3b49"
+    l: "3aaa4f40"
+    xl: "4a4ae26b"
+
+  # Deferred-comments tracking lives on a separate project board with its own field IDs.
+  # Used by .claude/skills/defer-pr-comments/SKILL.md.
+  defer_project_number: 26
+  defer_project_id: PVT_kwDODlOvwc4BPI7E
+  defer_priority_field_id: PVTSSF_lADODlOvwc4BPI7Ezg9ovHw
+  defer_size_field_id: PVTSSF_lADODlOvwc4BPI7Ezg9ovH0
+
+jira:
+  prefix: QENG-16846
+
+worktree:
+  root: ..  # parent of repo root
+
+sprint:
+  plans_dir: docs/sprint-plans
+  handoffs_dir: docs/handoffs
+  friction_file: docs/guide-friction.md
+
+labels:
+  wave_prefix: wave-
+  slice_prefix: slice-

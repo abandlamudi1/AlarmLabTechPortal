@@ -1,0 +1,32 @@
+# Issue #125: QENG-16846: feat(slice-g-part2): HorizontalPodAutoscaler — web
+#
+# Scales the web Deployment between hpa.web.minReplicas and hpa.web.maxReplicas
+# based on CPU utilisation (target 70%) and memory utilisation (target 80%).
+# Requires the Kubernetes Metrics Server to be installed in the cluster.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "lab-tech-portal.fullname" . }}-web
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "lab-tech-portal.fullname" . }}-web
+  minReplicas: {{ .Values.hpa.web.minReplicas }}
+  maxReplicas: {{ .Values.hpa.web.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.web.cpuTarget }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.hpa.web.memoryTarget }}

@@ -1,0 +1,67 @@
+# --- Slice 0 stub. Slice G-part1 (sprint 6) will own this file's full shape. ---
+# Keep the Docker build context lean. The principle: copy only what the runtime
+# image needs. Build-time tools live in pinned base layers; dev-only paths stay
+# on the host.
+
+# --- Git / VCS ---
+.git/
+.gitignore
+.gitattributes
+
+# --- Virtual environments / interpreters ---
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+
+# --- Test artifacts ---
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# --- IDE / editor / OS noise ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Local secrets and runtime state ---
+.env
+.env.local
+.env.*.local
+
+# --- SQLite databases — they belong in the DATA_DIR volume, not baked in ---
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# --- User upload directories (Slice D-part1 moves these under DATA_DIR) ---
+tools/print_requests/uploads/
+tools/inventory/static/qr_*.png
+tools/rf_chamber/static/qr_*.png
+
+# --- Docs and changelogs (not needed at runtime) ---
+docs/
+changelogs/
+README.md
+architecture.md
+AGENTS.md
+*.md
+
+# --- One-off dev/manual scripts (interactive; not for runtime or pytest) ---
+# migrate_legacy_paths.py is a tested migration artifact and must reach the
+# test stage — re-include it (and its __init__) after the broad exclusion.
+scripts/
+!scripts/__init__.py
+!scripts/migrate_legacy_paths.py
+
+# --- Planning / scratch ---
+description.txt
+add_issues_to_project.py

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Lab Resources{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>Lab Tech Resources</h1>
+    <p>Centralize the reference material that supports hardware prep, automation enablement, and day-to-day lab coordination.</p>
+</section>
+
+<section class="card">
+    <h2>Role At A Glance</h2>
+    <p>The QE Lab Tech role focuses on preparing and maintaining hardware infrastructure that powers QE automation efforts.</p>
+    <ul>
+        <li>Solder relay boards, automation devices, camera assemblies, and support wiring.</li>
+        <li>Assemble modular "kits" that reproduce real-world device setups for testing.</li>
+        <li>Research and prototype new hardware-to-software integrations to expand automation coverage.</li>
+    </ul>
+</section>
+
+<section class="card">
+    <h2>Key References</h2>
+    <div class="tool-grid">
+        {% for link in resource_links %}
+        <article class="tool-card">
+            <h3>{{ link.title }}</h3>
+            <p>{{ link.description }}</p>
+            <a class="btn-link" href="{{ link.url }}" target="_blank" rel="noopener">Open resource &rarr;</a>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card">
+    <h2>Need Help?</h2>
+    <p>For suggestions or questions, use the contacts and discussion threads listed in the QE Lab Tech Management Confluence page.</p>
+</section>
+{% endblock %}

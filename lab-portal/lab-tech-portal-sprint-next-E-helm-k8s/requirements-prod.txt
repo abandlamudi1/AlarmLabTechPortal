@@ -1,0 +1,10 @@
+# requirements-prod.txt — production-only dependencies (Slice G-part1, issue #5)
+#
+# This file supplements requirements.txt. Install both in production:
+#   pip install -r requirements.txt -r requirements-prod.txt
+#
+# Gunicorn is the WSGI server for production. It is NOT needed for local dev
+# (Flask's built-in server is used there), so it lives here rather than in
+# requirements.txt to keep the dev loop lightweight and to avoid conflicts with
+# Stream A's changes to requirements.txt.
+gunicorn==22.0.0

@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}Jira Import{% endblock %}
+
+{% block page_styles %}
+<style>
+    .import-layout {
+        display: grid;
+        gap: 24px;
+    }
+
+    .import-form .form-field textarea {
+        min-height: 90px;
+    }
+
+    .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 16px;
+    }
+
+    .preview-table th,
+    .preview-table td {
+        padding: 12px 14px;
+        border: 1px solid var(--card-border);
+        vertical-align: top;
+    }
+
+    .preview-table th {
+        background: var(--table-header-bg, rgba(0, 0, 0, 0.04));
+        text-align: left;
+        font-size: 0.9em;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted-text);
+    }
+
+    .location-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.8em;
+        font-weight: 600;
+        border: 1px solid var(--card-border);
+    }
+
+    .status-active {
+        color: var(--status-active-color);
+        border-color: var(--status-active-color);
+    }
+
+    .status-maintenance {
+        color: var(--status-warning-color);
+        border-color: var(--status-warning-color);
+    }
+
+    .status-broken {
+        color: var(--status-error-color);
+        border-color: var(--status-error-color);
+    }
+
+    .status-decommissioned {
+        color: var(--status-neutral-color);
+        border-color: var(--status-neutral-color);
+    }
+
+    .status-incomplete {
+        color: var(--status-error-color);
+        border-color: var(--status-error-color);
+    }
+
+    .status-complete {
+        color: var(--status-active-color);
+        border-color: var(--status-active-color);
+    }
+
+    .conflict-list {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--status-error-color);
+    }
+
+    .identifier-list {
+        margin: 6px 0 0;
+        padding-left: 18px;
+        color: var(--muted-text);
+    }
+
+    .identifier-list span {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .import-summary {
+        margin-top: 12px;
+        font-weight: 600;
+    }
+
+    .notice-inline {
+        margin-top: 16px;
+    }
+</style>
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('systems.dashboard') }}">System Locator</a>
+{% endblock %}
+
+{% block content %}
+<section class="card import-layout">
+    <header>
+        <h1>Import Lab Requests from Jira</h1>
+        <p>Preview Lab Request issues from Jira and sync them into the System Locator. Jira remains the source of truth—this tool creates or updates system profiles automatically.</p>
+    </header>
+
+    {% if errors %}
+    <div class="notice notice-error">
+        <strong>Unable to run import:</strong>
+        <ul>
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if applied_message %}
+    <div id="import-status-block" class="notice notice-success notice-inline">
+        {{ applied_message }}
+        {% if import_task_id %}
+        <br><small>Task ID: <code>{{ import_task_id }}</code></small>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <section class="import-form">
+        <h2>Filter Lab Requests</h2>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-field">
+                <label for="project_keys">Project keys</label>
+                <textarea id="project_keys" name="project_keys" placeholder="QEPR, QEOPS">{{ form.project_keys }}</textarea>
+                <p class="hint">Optional. Provide one or more Jira project keys (comma or newline separated). Leave blank to search all projects you can access.</p>
+            </div>
+            <div class="form-grid">
+                <div class="form-field">
+                    <label for="start_date">Start date</label>
+                    <input id="start_date" name="start_date" type="date" value="{{ form.start_date }}">
+                </div>
+                <div class="form-field">
+                    <label for="end_date">End date</label>
+                    <input id="end_date" name="end_date" type="date" value="{{ form.end_date }}">
+                </div>
+            </div>
+            <div class="form-field">
+                <label for="issue_keys">Specific issues</label>
+                <textarea id="issue_keys" name="issue_keys" placeholder="QEPR-101&#10;QEOPS-55">{{ form.issue_keys }}</textarea>
+                <p class="hint">Optional. Paste Jira issue keys to limit the import. If provided, these override the project and date filters.</p>
+            </div>
+            <div class="form-actions">
+                <button class="btn" type="submit" name="action" value="preview">Preview Jira Issues</button>
+            </div>
+        </form>
+    </section>
+
+    {% if preview %}
+    <section>
+        <h2>Preview ({{ preview|length }})</h2>
+        <p>Review each issue before importing. Incomplete locations or identifier conflicts are highlighted for follow-up.</p>
+        <table class="preview-table">
+            <thead>
+                <tr>
+                    <th>Jira Issue</th>
+                    <th>System Profile Name</th>
+                    <th>Status</th>
+                    <th>Location</th>
+                    <th class="col-low-priority">Identifiers</th>
+                    <th class="col-low-priority">Conflicts</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in preview %}
+                <tr>
+                    <td>
+                        <strong>{{ item.issue_key }}</strong><br>
+                        <span class="hint">{{ item.jira_status or 'Unspecified' }}</span>
+                    </td>
+                    <td>{{ item.system_name }}</td>
+                    <td>
+                        <span class="status-pill status-{{ item.mapped_status | lower | replace(' ', '-') }}">{{ item.mapped_status }}</span>
+                    </td>
+                    <td>
+                        <div class="location-status">
+                            {% if item.location_complete %}
+                            <span class="status-pill status-complete">Complete</span>
+                            {% else %}
+                            <span class="status-pill status-incomplete">Incomplete</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if item.location.location_number %}
+                            <div><strong>Location Number:</strong> {{ item.location.location_number }}</div>
+                            {% endif %}
+                            {% if item.location.location_name %}
+                            <div><strong>Location Name:</strong> {{ item.location.location_name }}</div>
+                            {% endif %}
+                            {% if not item.location_complete %}
+                            <div class="hint">Missing: {{ item.missing_location_fields | join(', ') | replace('_', ' ') | title }}</div>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="col-low-priority">
+                        {% if item.identifiers %}
+                        <ul class="identifier-list">
+                            {% for identifier in item.identifiers %}
+                            <li><span>{{ identifier.label }}:</span> {{ identifier.value }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <span class="hint">None provided</span>
+                        {% endif %}
+                    </td>
+                    <td class="col-low-priority">
+                        {% if item.identifier_conflicts %}
+                        <ul class="conflict-list">
+                            {% for conflict in item.identifier_conflicts %}
+                            <li>{{ conflict.label }} {{ conflict.value }} (System Profile: {{ conflict.conflicting_system_name }})</li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <span class="hint">No conflicts</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.existing_system %}
+                        Update existing
+                        {% else %}
+                        Create new
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <form method="post" class="import-summary">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="project_keys" value="{{ form.project_keys }}">
+            <input type="hidden" name="start_date" value="{{ form.start_date }}">
+            <input type="hidden" name="end_date" value="{{ form.end_date }}">
+            <textarea name="confirmed_issue_keys" hidden>{{ confirmed_issue_keys }}</textarea>
+            <button class="btn" type="submit" name="action" value="confirm">Import {{ preview|length }} issue{% if preview|length != 1 %}s{% endif %}</button>
+        </form>
+    </section>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+{% if import_task_id %}
+<script>
+(function () {
+    var taskId = {{ import_task_id | tojson }};
+    var statusUrl = "/api/v1/tasks/" + taskId + "/status";
+    var maxAttempts = 30;
+    var attempt = 0;
+    var intervalId;
+
+    function updateBlock(cssClass, boldLabel, detailText) {
+        var block = document.getElementById("import-status-block");
+        if (!block) { return; }
+        block.className = "notice " + cssClass + " notice-inline";
+        while (block.firstChild) { block.removeChild(block.firstChild); }
+        if (boldLabel) {
+            var strong = document.createElement("strong");
+            strong.textContent = boldLabel;
+            block.appendChild(strong);
+            block.appendChild(document.createTextNode(" "));
+        }
+        block.appendChild(document.createTextNode(detailText));
+    }
+
+    function poll() {
+        attempt += 1;
+        if (attempt > maxAttempts) {
+            clearInterval(intervalId);
+            updateBlock("notice-warning", null, "Taking longer than expected — check back later.");
+            return;
+        }
+
+        fetch(statusUrl)
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.state === "SUCCESS") {
+                    clearInterval(intervalId);
+                    var result = data.result || {};
+                    var parts = [];
+                    if (result.created) { parts.push("Created " + parseInt(result.created, 10)); }
+                    if (result.updated) { parts.push("Updated " + parseInt(result.updated, 10)); }
+                    if (result.skipped) { parts.push("Skipped " + parseInt(result.skipped, 10)); }
+                    var summary = parts.length ? parts.join(", ") + "." : "Import complete.";
+                    updateBlock("notice-success", "Import complete.", summary);
+                } else if (data.state === "FAILURE") {
+                    clearInterval(intervalId);
+                    updateBlock("notice-error", "Import failed:", data.error || "Import failed.");
+                }
+                // PENDING / STARTED / RETRY -- keep polling
+            })
+            .catch(function () {
+                // Network error -- keep polling silently
+            });
+    }
+
+    intervalId = setInterval(poll, 5000);
+})();
+</script>
+{% endif %}
+{% endblock %}
+

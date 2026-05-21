@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>{% block title %}Lab Tech Portal{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block page_styles %}{% endblock %}
+    <script>
+        (function () {
+            try {
+                if (localStorage.getItem('portalTheme') === 'dark') {
+                    document.documentElement.classList.add('dark-mode');
+                }
+            } catch (err) {
+                /* storage unavailable */
+            }
+        })();
+    </script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="app-shell">
+    <header class="topbar">
+        <div class="toolbar">
+            <nav class="toolbar-links" aria-label="Primary navigation">
+                {% block toolbar_primary %}{% endblock %}
+            </nav>
+            <nav class="toolbar-links" aria-label="Secondary navigation">
+                {% block toolbar_secondary %}{% endblock %}
+                {% if current_user.is_authenticated %}
+                <span class="user-chip">{{ current_user.display_name }} ({{ current_user.email }})</span>
+                <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
+                {% endif %}
+                <button id="themeToggle" class="btn btn-secondary" type="button" aria-pressed="false">Dark Mode</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="content" id="main">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+    (function () {
+        const root = document.documentElement;
+        const toggle = document.getElementById('themeToggle');
+        if (!toggle) {
+            return;
+        }
+
+        const updateToggle = (isDark) => {
+            toggle.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+            toggle.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        };
+
+        const applyTheme = (mode) => {
+            const useDark = mode === 'dark';
+            root.classList.toggle('dark-mode', useDark);
+            updateToggle(useDark);
+        };
+
+        const readStoredTheme = () => {
+            try {
+                const direct = localStorage.getItem('portalTheme');
+                if (direct) {
+                    return direct;
+                }
+                return localStorage.getItem('rfTheme');
+            } catch (err) {
+                return null;
+            }
+        };
+
+        const storeTheme = (mode) => {
+            try {
+                localStorage.setItem('portalTheme', mode);
+                localStorage.removeItem('rfTheme');
+            } catch (err) {
+                /* storage unavailable */
+            }
+        };
+
+        const initialMode = root.classList.contains('dark-mode') || readStoredTheme() === 'dark' ? 'dark' : 'light';
+        applyTheme(initialMode);
+
+        toggle.addEventListener('click', () => {
+            const nextMode = root.classList.contains('dark-mode') ? 'light' : 'dark';
+            applyTheme(nextMode);
+            storeTheme(nextMode);
+        });
+    })();
+</script>
+{% block page_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Prometheus scrape configuration for the Lab Tech Portal dev topology.
+#
+# Used by the `prometheus` service in docker-compose.yml.
+# Mount this file into the Prometheus container at /etc/prometheus/prometheus.yml.
+#
+# Slice B, Issue #32.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "lab-tech-portal"
+    static_configs:
+      # Port must match ${PORT:-8000} in docker-compose.yml (web container internal port).
+      - targets: ["web:8000"]
+    metrics_path: /metrics
+    # scrape_timeout defaults to global scrape_interval (15s). The /metrics
+    # endpoint is a fast in-process read — no external I/O — so the default
+    # is appropriate. Reduce if cardinality grows significantly.

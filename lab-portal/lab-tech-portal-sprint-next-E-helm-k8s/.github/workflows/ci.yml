@@ -1,0 +1,197 @@
+# .github/workflows/ci.yml — Docker CI pipeline (Slice G-part1, issue #25)
+#
+# Triggers: push to master, all pull requests.
+# Steps:
+#   1. Build all Dockerfile targets with Docker layer caching.
+#   2. Build the test target and run pytest inside the test container.
+#   3. Start compose stack, wait for health, run smoke test.
+#   4. Tear down.
+#
+# NOTE: This workflow is intentionally separate from jira-check.yml.
+# Do NOT merge these two files.
+
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build, smoke-test, and pytest
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Checkout
+      # -----------------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # -----------------------------------------------------------------------
+      # 2. Set up Docker Buildx with layer caching
+      # -----------------------------------------------------------------------
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      # -----------------------------------------------------------------------
+      # 3. Build all image targets
+      # -----------------------------------------------------------------------
+      - name: Build — target web
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: web
+          tags: lab-tech-portal:web
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+
+      - name: Build — target worker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: worker
+          tags: lab-tech-portal:worker
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+
+      - name: Build — target beat
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: beat
+          tags: lab-tech-portal:beat
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+
+      # Export cache only once — from the test stage, which inherits all base
+      # layers shared by every target. Exporting per-step to the same dest
+      # overwrites prior layers and reduces cache effectiveness.
+      - name: Build — target test
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: test
+          tags: lab-tech-portal:test
+          load: true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # Rotate the cache so the next run picks up today's layers.
+      - name: Rotate build cache
+        run: |
+          rm -rf /tmp/.buildx-cache
+          mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      # -----------------------------------------------------------------------
+      # 4. Run pytest inside the test container (pytest lives here, not in web)
+      # -----------------------------------------------------------------------
+      - name: Write minimal .env for CI
+        run: |
+          cat > .env <<'EOF'
+          FLASK_ENV=testing
+          SECRET_KEY=ci-only-not-a-real-secret
+          DATA_DIR=/data
+          LOG_LEVEL=INFO
+          EOF
+
+      # Run pytest once with combined --cov=, writing the data file and XML
+      # report to a mounted /coverage volume on the host so subsequent steps
+      # (per-package gates + artifact upload) can read them.
+      - name: Run pytest with coverage in test container
+        run: |
+          docker run --rm \
+            --user root \
+            -v "$(pwd):/coverage" \
+            --env FLASK_ENV=testing \
+            --env SECRET_KEY=ci-only-not-a-real-secret \
+            --env DATA_DIR=/data \
+            --env LOG_LEVEL=INFO \
+            --env COVERAGE_FILE=/coverage/.coverage \
+            lab-tech-portal:test \
+            python -m pytest tests/ -q --tb=short \
+              --cov=tools --cov=services --cov=tasks \
+              --cov-report=xml:/coverage/coverage.xml \
+              --cov-report=term-missing
+
+      # Per-package gates: re-run `coverage report` against the same data file
+      # with --include filters. Each package has an independent --fail-under,
+      # so a regression in tools/ is not masked by tasks/ being well-covered.
+      # services/ is deferred until it reaches 70% — see TODO #133.
+      - name: Coverage gate — tools/ ≥ 70%
+        run: |
+          docker run --rm \
+            --user root \
+            -v "$(pwd):/coverage" \
+            --env COVERAGE_FILE=/coverage/.coverage \
+            lab-tech-portal:test \
+            python -m coverage report --include='tools/*' --fail-under=70
+
+      - name: Coverage gate — tasks/ ≥ 70%
+        run: |
+          docker run --rm \
+            --user root \
+            -v "$(pwd):/coverage" \
+            --env COVERAGE_FILE=/coverage/.coverage \
+            lab-tech-portal:test \
+            python -m coverage report --include='tasks/*' --fail-under=70
+
+      # TODO #133: enable when services/ reaches 70%.
+      # - name: Coverage gate — services/ ≥ 70%
+      #   run: |
+      #     docker run --rm -v "$(pwd):/coverage" \
+      #       --env COVERAGE_FILE=/coverage/.coverage \
+      #       lab-tech-portal:test \
+      #       python -m coverage report --include='services/*' --fail-under=70
+
+      - name: Upload coverage XML artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
+
+      # -----------------------------------------------------------------------
+      # 5. Start compose stack (web + redis only; worker/beat stubs not needed)
+      # -----------------------------------------------------------------------
+      - name: Start compose stack
+        run: |
+          docker compose up -d web redis
+          # Give services time to reach healthy state (up to 60 s).
+          timeout 60 sh -c '
+            until docker compose ps web | grep -q "healthy"; do
+              echo "Waiting for web to become healthy…"
+              sleep 3
+            done
+          ' || (docker compose logs && exit 1)
+
+      # -----------------------------------------------------------------------
+      # 6. Integration smoke test — HTTP 200 on /
+      # -----------------------------------------------------------------------
+      - name: Smoke test — GET /
+        run: |
+          STATUS=$(docker compose exec -T web \
+            curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/)
+          echo "HTTP status: ${STATUS}"
+          [ "${STATUS}" = "200" ] || (echo "Smoke test failed — expected 200, got ${STATUS}" && exit 1)
+
+      # -----------------------------------------------------------------------
+      # 7. Tear down
+      # -----------------------------------------------------------------------
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose down -v

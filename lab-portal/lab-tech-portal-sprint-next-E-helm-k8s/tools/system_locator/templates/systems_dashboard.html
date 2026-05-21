@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}System Locator{% endblock %}
+
+{% block page_styles %}
+<style>
+    .search-form {
+        gap: 18px;
+    }
+
+    .filter-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .filter-card {
+        padding: 14px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+        background: var(--card-muted-bg);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .filter-card h3 {
+        margin: 0;
+        font-size: 1.05em;
+        text-align: center;
+        font-style: italic;
+    }
+
+    .filter-card {
+        gap: 14px;
+    }
+
+    .filter-fields {
+        display: grid;
+        gap: 12px;
+    }
+
+    .filter-fields select,
+    .filter-fields input {
+        width: 100%;
+    }
+
+    .filter-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .filter-hint {
+        margin: 6px 0 0;
+        color: var(--muted-text);
+    }
+
+    .status-tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 0.85em;
+        font-weight: 600;
+        background-color: var(--card-bg);
+        border: 1px solid var(--card-border);
+        color: var(--muted-text);
+    }
+
+    .status-active {
+        border-color: var(--status-active-color);
+        color: var(--status-active-color);
+    }
+
+    .status-broken {
+        border-color: var(--status-error-color);
+        color: var(--status-error-color);
+    }
+
+    .status-maintenance {
+        border-color: var(--status-warning-color);
+        color: var(--status-warning-color);
+    }
+
+    .status-decommissioned {
+        border-color: var(--status-neutral-color);
+        color: var(--status-neutral-color);
+    }
+
+    .system-location,
+    .system-identifiers,
+    .system-jira {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .system-location {
+        padding: 16px 18px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(0, 102, 204, 0.1), transparent);
+        border: 1px solid rgba(0, 102, 204, 0.15);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        gap: 12px;
+    }
+
+    .system-location .location-title {
+        text-transform: uppercase;
+        font-size: 0.75em;
+        letter-spacing: 0.08em;
+        color: var(--muted-text);
+        font-weight: 600;
+    }
+
+    .system-location .location-primary {
+        font-size: 1.1em;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .location-details {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+
+    .location-details dt {
+        font-size: 0.85em;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted-text);
+    }
+
+    .location-details dd {
+        margin: 4px 0 0;
+        font-weight: 600;
+    }
+
+    .system-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .system-name {
+        margin: 18px 0 8px;
+        font-size: 1.25em;
+    }
+
+    .system-identifiers ul,
+    .system-jira ul {
+        margin: 0;
+        padding-left: 18px;
+    }
+
+    .system-identifiers li span {
+        font-weight: 600;
+    }
+
+    .system-notes {
+        margin: 0;
+        color: var(--muted-text);
+    }
+
+    .focus-result {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .tool-card .form-actions {
+        margin-top: 12px;
+    }
+
+    .tool-card .form-actions form {
+        margin: 0;
+        display: inline-flex;
+    }
+
+    .tool-card .form-actions form button {
+        width: 100%;
+    }
+
+    @media (min-width: 540px) {
+        .tool-card .form-actions {
+            flex-direction: row;
+        }
+
+        .tool-card .form-actions form button {
+            width: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn" href="{{ url_for('systems.create_system') }}">Add System Profile</a>
+<a class="btn portal-button" href="{{ url_for('systems.jira_import') }}">Import from Jira</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>System Locator</h1>
+    <p>Find system profiles by identifier or lab location without the noise.</p>
+    <form method="get" class="search-form">
+        <div class="filter-grid">
+            <div class="filter-card">
+                <h3>Identifier Filter</h3>
+                <div class="filter-fields">
+                    <div class="form-field">
+                        <label for="identifier_type">Identifier Type</label>
+                        <select id="identifier_type" name="identifier_type">
+                            <option value="">Select a type</option>
+                            {% for choice in identifier_types %}
+                            <option value="{{ choice }}" {% if identifier_type == choice %}selected{% endif %}>{{ choice }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label for="identifier_value">Identifier Value</label>
+                        <input id="identifier_value" name="identifier_value" type="text" value="{{ identifier_value }}" placeholder="Enter the identifier" />
+                    </div>
+                </div>
+            </div>
+            <div class="filter-card">
+                <h3>Lab Location Filter</h3>
+                <div class="filter-fields">
+                    <div class="form-field">
+                        <label for="location_name">Lab Location</label>
+                        <select id="location_name" name="location_name">
+                            <option value="">Select a lab</option>
+                            {% for choice in lab_locations %}
+                            <option value="{{ choice }}" {% if location_name == choice %}selected{% endif %}>
+                                {% if choice == 'Automation Lab' %}Automation Lab (10-640)
+                                {% elif choice == 'QE Lab' %}QE Lab (10-510)
+                                {% elif choice == 'Product Testing Lab' %}Product Testing Lab (10-630)
+                                {% elif choice == 'Hardware Test Framework Lab' %}Hardware Test Framework Lab (10-070)
+                                {% elif choice == 'DE Lab' %}DE Lab (11-050)
+                                {% elif choice == 'International Lab' %}International Lab (9-070)
+                                {% elif choice == 'Commercial Team Lab' %}Commercial Team Lab (7-370)
+                                {% elif choice == 'Mobile/CX Team Lab' %}Mobile/CX Team Lab (6-430)
+                                {% elif choice == 'Video Team Lab' %}Video Team Lab (5-030)
+                                {% elif choice == 'Panels Team Lab' %}Panels Team Lab (no room)
+                                {% else %}{{ choice }}
+                                {% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn" type="submit">Apply Filters</button>
+            {% if filters_applied or identifier_type or identifier_value %}
+            <a class="btn btn-secondary" href="{{ url_for('systems.dashboard') }}">Clear</a>
+            {% endif %}
+        </div>
+        <p class="filter-hint">Select an identifier or lab location to view matching system profiles.</p>
+    </form>
+    {% if message %}
+    <div class="notice {% if status == 'success' %}notice-success{% else %}notice-error{% endif %}">{{ message }}</div>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>Results <small>({{ total }})</small></h2>
+    {% if identifier_incomplete %}
+    <div class="notice notice-error">Select both an identifier type and value to search by identifier.</div>
+    {% endif %}
+    {% if not filters_applied %}
+    <p class="empty">Select an identifier or lab location to view matching system profiles.</p>
+    {% elif total == 0 %}
+    <p class="empty">No system profiles match your filters. Try another identifier or broaden your search.</p>
+    {% elif total == 1 and single_result %}
+    <div class="notice notice-success focus-result">
+        <strong>Found 1 system profile:</strong>
+        <span>{{ single_result.name }} &mdash; {{ single_result.location_summary }}</span>
+    </div>
+    {% elif total > 1 %}
+    <div class="notice notice-success">
+        <strong>{{ total }}</strong> system profiles match your filters.
+    </div>
+    {% endif %}
+    {% if results %}
+    <div class="tool-grid">
+        {% for system in results %}
+        <article class="tool-card">
+            <div class="system-location">
+                <div class="system-header">
+                    <div class="location-title">Location</div>
+                    <span class="status-tag status-{{ system.status | lower | replace(' ', '-') }}">{{ system.status }}</span>
+                </div>
+                <div class="location-primary">{{ system.location_summary }}</div>
+                <dl class="location-details">
+                    {% if system.location_number %}
+                    <div>
+                        <dt>Location Number</dt>
+                        <dd>{{ system.location_number }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if system.location_name %}
+                    <div>
+                        <dt>Location Name</dt>
+                        <dd>{{ system.location_name }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+                {% if not system.location_complete %}
+                <div class="notice notice-error" style="margin-top: 8px;">
+                    Missing {{ system.missing_location_fields | join(', ') | replace('_', ' ') | title }}
+                </div>
+                {% endif %}
+            </div>
+            <h3 class="system-name">{{ system.name }}</h3>
+            {% if system.identifiers %}
+            <div class="system-identifiers">
+                <strong>Identifiers</strong>
+                <ul>
+                    {% for identifier in system.identifiers %}
+                    <li><span>{{ identifier.label }}:</span> {{ identifier.value }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if system.jira_tickets %}
+            <div class="system-jira">
+                <strong>Jira Tickets</strong>
+                <ul>
+                    {% for ticket in system.jira_tickets %}
+                    <li>{{ ticket }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+            {% if system.notes %}
+            <p class="system-notes">{{ system.notes }}</p>
+            {% endif %}
+            <div class="form-actions">
+                <a class="btn btn-secondary" href="{{ url_for('systems.edit_system', system_id=system.id) }}">Edit</a>
+                <form method="post" action="{{ url_for('systems.delete_system', system_id=system.id) }}" onsubmit="return confirm('Mark this system profile as decommissioned?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-danger" type="submit">Decommission</button>
+                </form>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,70 @@
+# Issue #125: QENG-16846: feat(slice-g-part2): Helm Deployment — web
+#
+# Gunicorn/Flask web tier. Minimum 2 replicas; HPA scales up to 10.
+# envFrom wires the non-secret ConfigMap + the SealedSecrets reference (issue #51).
+# The checksum annotation triggers a rolling restart when the ConfigMap changes.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lab-tech-portal.fullname" . }}-web
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.replicaCount.web }}
+  selector:
+    matchLabels:
+      {{- include "lab-tech-portal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        {{- include "lab-tech-portal.labels" . | nindent 8 }}
+        app.kubernetes.io/component: web
+      annotations:
+        # ConfigMap checksum — triggers a rolling restart when the ConfigMap changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - "exec gunicorn --workers ${GUNICORN_WORKERS:-4} --bind 0.0.0.0:${PORT:-8000} wsgi:app"
+          ports:
+            - name: http
+              containerPort: {{ .Values.config.PORT | default "8000" | int }}
+              protocol: TCP
+          envFrom:
+            # Non-secret runtime configuration.
+            - configMapRef:
+                name: {{ include "lab-tech-portal.configMapName" . }}
+            # Secret values (SECRET_KEY, OKTA_CLIENT_SECRET, JIRA_PAT, S3_ACCESS_KEY,
+            # S3_SECRET_KEY, ATLASSIAN_MCP_TOKEN, SYSTEM_LOCATOR_DELETE_PIN).
+            # The SealedSecret resource itself is defined in issue #51.
+            - secretRef:
+                name: {{ include "lab-tech-portal.secretName" . }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.web.requests.cpu }}
+              memory: {{ .Values.resources.web.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.web.limits.cpu }}
+              memory: {{ .Values.resources.web.limits.memory }}
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 3
+      restartPolicy: Always

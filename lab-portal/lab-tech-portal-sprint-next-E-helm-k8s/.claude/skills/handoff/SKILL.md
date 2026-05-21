@@ -1,0 +1,281 @@
+---
+name: handoff
+description: Generate a context-budget transition document when approaching the AI tool's context limit. Auto-pulls git state and open PRs, conducts a short interview, and writes a self-contained starter prompt to $CONFIG.sprint.handoffs_dir/ so the next session can pick up cold.
+argument-hint: "[--topic <short-slug>] [--dry-run]"
+allowed-tools: Bash(git *) Bash(gh *) Bash(date *) Bash(ls *) Bash(cat *) Bash(grep *) Read Write AskUserQuestion
+---
+
+# Handoff — Context-Budget Transition Document Generator
+
+> **Constants.** Read `.claude/skills/skill-config.yml` for project-specific constants. All `$CONFIG.*` references in this document use values from that file.
+
+> **Pattern**: NEW — proposed for qe-architecture-ai-assisted-guide
+> See F06 in [docs/guide-friction.md](../../../docs/guide-friction.md) for the upstream proposal.
+
+When a Claude Code session approaches its context limit, AGENTS.md §Sprint/Task Execution requires writing a starter prompt for the next session. This skill automates that process: it gathers git and GitHub state automatically, conducts a short interview, and writes a self-contained handoff document to `$CONFIG.sprint.handoffs_dir/`.
+
+---
+
+## Why This Skill Exists
+
+Manual handoff notes are written inconsistently (or forgotten entirely) when context pressure is highest. The resulting gaps force the next session to re-derive state — wasting tokens and risking missed context. This skill enforces a consistent, minimal handoff in under two minutes.
+
+**What to read first (in the next session):**
+- The handoff doc at `$CONFIG.sprint.handoffs_dir/<date>-<topic>.md`
+- `AGENTS.md` — hard rules, project conventions
+- The referenced PR(s) and their Copilot review status
+
+---
+
+## Invocation
+
+```
+/handoff
+/handoff --topic sprint-4-stream-a
+/handoff --dry-run
+```
+
+- **No arguments**: prompts for a topic slug via interview (see Phase 2).
+- **`--topic <slug>`**: skips the topic question; uses the provided slug in the filename.
+- **`--dry-run`**: prints the document it would write; creates no file.
+
+---
+
+## Phase 0 — Pre-flight
+
+Check that the output directory exists. Create it if not:
+
+```bash
+mkdir -p $CONFIG.sprint.handoffs_dir
+```
+
+Determine the current date for the filename:
+
+```bash
+TODAY=$(date +%Y-%m-%d)
+echo "Handoff date: $TODAY"
+```
+
+---
+
+## Phase 1 — Auto-pull context (no human input needed)
+
+Run all of the following commands and capture their output. These form the raw material for the handoff document.
+
+### Step 1.1 — Current branch and commit
+
+```bash
+git branch --show-current
+git log --oneline -1
+```
+
+### Step 1.2 — Uncommitted changes summary
+
+```bash
+git status --short
+git diff --stat HEAD
+```
+
+If the working tree is clean, note "working tree clean" in the handoff.
+
+### Step 1.3 — Recent commits (context for what has been done)
+
+```bash
+git log --oneline -10
+```
+
+### Step 1.4 — Open PRs
+
+```bash
+gh pr list --repo $CONFIG.repo --state open \
+  --json number,title,headRefName,reviewDecision,statusCheckRollup \
+  --jq '.[] | "#\(.number) \(.title) [\(.headRefName)] review=\(.reviewDecision // "NONE")"'
+```
+
+If the current branch has an associated PR, also pull its Copilot review status:
+
+```bash
+CURRENT_BRANCH=$(git branch --show-current)
+gh pr view --repo $CONFIG.repo \
+  --json number,title,url,latestReviews,statusCheckRollup \
+  --jq '{number: .number, url: .url, copilot_review: (.latestReviews[] | select(.author.login == "copilot-pull-request-reviewer") | .state) // "none", ci: [.statusCheckRollup[] | .conclusion // .status] | unique}' \
+  2>/dev/null || echo "(no PR for current branch)"
+```
+
+### Step 1.5 — Active worktrees
+
+```bash
+git worktree list
+```
+
+### Step 1.6 — Relevant memory entries (optional)
+
+Read the user's memory files for context that the next session will need:
+
+```bash
+ls ~/.claude/projects/*/memory/ 2>/dev/null | head -20
+```
+
+Read `MEMORY.md` if present (the auto-memory file referenced in the project settings). This is optional; skip gracefully if not accessible.
+
+---
+
+## Phase 2 — Short interview
+
+Use `AskUserQuestion` to ask the following four questions. Ask them one at a time. Store the answers.
+
+1. **Session goal**: "What was the goal of this session? (1-2 sentences)"
+2. **Complete vs in-progress**: "What is complete vs still in-progress? List each item."
+3. **Next steps**: "What should the next session do first? List in priority order."
+4. **Blockers**: "Any blockers the next session needs to know about? (Or: none)"
+
+If `--topic` was not provided as an argument, also ask:
+5. **Topic slug**: "Short topic slug for the filename (e.g., `sprint-4-stream-a`, `slice-b-obs-fixes`):"
+
+---
+
+## Phase 3 — Compose the handoff document
+
+Combine Phase 1 (auto-pulled context) and Phase 2 (interview answers) into a self-contained markdown document. Use this template:
+
+````markdown
+# Handoff — {DATE} — {TOPIC}
+
+> **Next session: read this file first.** It was generated by `/handoff` to capture the state of the {DATE} session before context-budget ran out.
+
+---
+
+## Critical callouts
+
+> List any hard blockers, in-flight conflicts, or "don't forget" items from the interview here.
+> If none: "(none)"
+
+---
+
+## What to read first
+
+1. This file
+2. `AGENTS.md` — hard rules and project conventions
+3. {Any PR URLs from Phase 1 that are relevant — include Copilot review status}
+4. `$CONFIG.sprint.friction_file` — if guide improvements were in-progress
+5. {Any other referenced docs from the session goal}
+
+---
+
+## Session goal
+
+{Answer from Q1}
+
+---
+
+## Status: complete vs in-progress
+
+{Answer from Q2, formatted as a checklist}
+
+- [x] {completed item}
+- [ ] {in-progress item}
+- [ ] {not started but planned item}
+
+---
+
+## Recommended next action
+
+{Answer from Q3, formatted as numbered steps}
+
+1. {First step}
+2. {Second step}
+...
+
+---
+
+## Blockers
+
+{Answer from Q4, or "(none)"}
+
+---
+
+## Auto-pulled git state (at session close)
+
+**Branch:** {output of Step 1.1}
+**Latest commit:** {output of Step 1.1}
+
+**Uncommitted changes:**
+```
+{output of Step 1.2 — or "working tree clean"}
+```
+
+**Recent commits:**
+```
+{output of Step 1.3}
+```
+
+**Open PRs:**
+```
+{output of Step 1.4}
+```
+
+**Active worktrees:**
+```
+{output of Step 1.5}
+```
+
+---
+
+_Generated by `/handoff` on {DATE}. See `.claude/skills/handoff/SKILL.md` for the skill design._
+````
+
+---
+
+## Phase 4 — Write the document
+
+Determine the output path:
+
+```
+$CONFIG.sprint.handoffs_dir/{TODAY}-{TOPIC}.md
+```
+
+Example: `$CONFIG.sprint.handoffs_dir/2026-05-13-sprint-4-stream-a.md`
+
+If `--dry-run` was passed, print the document content and stop. Do not write the file.
+
+Otherwise, write the file using the Write tool.
+
+Confirm to the user:
+
+```
+Handoff written to $CONFIG.sprint.handoffs_dir/{TODAY}-{TOPIC}.md
+
+Next session: open that file and follow "What to read first".
+```
+
+---
+
+## Error handling
+
+### No open PRs
+If `gh pr list` returns nothing, note "(no open PRs)" in the auto-pulled git state section. This is normal outside of a wave.
+
+### Interview answer too long
+If a user answer is unusually long (>500 words), summarize the key points in the document and include the full text in a collapsible section:
+
+```markdown
+<details>
+<summary>Full answer</summary>
+
+{full text}
+
+</details>
+```
+
+### Output path already exists
+If `$CONFIG.sprint.handoffs_dir/{TODAY}-{TOPIC}.md` already exists, append a counter suffix:
+`$CONFIG.sprint.handoffs_dir/{TODAY}-{TOPIC}-2.md`
+
+---
+
+## Related
+
+- [AGENTS.md](../../../AGENTS.md) §Sprint/Task Execution — the rule this skill implements
+- [docs/guide-friction.md](../../../docs/guide-friction.md) — F06 proposes this pattern for the architecture guide
+- [docs/handoffs/](../../../docs/handoffs/) — output directory
+- [.claude/skills/sprint-close/SKILL.md](../sprint-close/SKILL.md) — related lifecycle automation

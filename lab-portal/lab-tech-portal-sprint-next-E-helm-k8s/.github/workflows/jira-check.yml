@@ -1,0 +1,15 @@
+# .github/workflows/jira-check.yml
+name: Jira Status Check
+on:
+    pull_request:
+        types: [ opened, synchronize, reopened, edited ]
+
+permissions:
+    statuses: write
+    pull-requests: read
+
+jobs:
+    jira-status:
+        uses: adc-software/reusable-workflows-and-actions/.github/workflows/jira-status-check.yml@98b50cd92f7892611e8f703e94e4ad69f9379282
+        secrets:
+            JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}

@@ -1,0 +1,17 @@
+# Traefik Middleware for HTTP→HTTPS redirect.
+# Only rendered when ingress.className is "traefik".
+# Referenced by the Ingress annotation:
+#   traefik.ingress.kubernetes.io/router.middlewares: "<namespace>-redirect-https@kubernetescrd"
+{{- if and .Values.ingress.enabled (eq .Values.ingress.className "traefik") }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ .Release.Namespace }}-redirect-https
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+{{- end }}

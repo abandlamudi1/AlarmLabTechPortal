@@ -1,0 +1,21 @@
+# Daily Routine Configuration Template - Lab Tech Portal
+# This is a minimal template - copy to .daily-routine-config
+# See .daily-routine-config.example for all available options
+
+# Project Configuration
+PROJECT_NAME="Lab Tech Portal"
+GITHUB_ORG="adc-quality"
+GITHUB_PROJECT_ID="23"
+CHANGELOG_DIR="changelogs"
+
+# Python Settings
+PYTHON_CMD="python3"
+REQUIREMENTS_FILE="requirements.txt"
+VENV_DIR=".venv"
+
+# Git Settings
+DEFAULT_BRANCH="master"
+
+# Optional: Enable/disable features
+ENABLE_CONNECTIVITY_CHECKS="false"
+SKIP_CHANGELOG_CHECK="false"

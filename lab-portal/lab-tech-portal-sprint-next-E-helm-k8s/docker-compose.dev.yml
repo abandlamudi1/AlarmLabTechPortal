@@ -1,0 +1,38 @@
+# docker-compose.dev.yml — development overlay for hot-reload (Slice G-part1, issue #23)
+#
+# Usage (always layer on top of docker-compose.yml). To run just web + redis
+# (skip worker/beat stubs, which Compose override files cannot remove):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up web redis
+#
+# What this overlay changes vs. the base compose file:
+#   - Mounts the local source tree into the web container so edits appear
+#     immediately without a rebuild.
+#   - Switches the web command to Flask's development server with --reload.
+#   - Sets FLASK_ENV=development and FLASK_DEBUG=1.
+#
+# Note: this overlay does NOT drop the worker/beat services. Compose override
+# files cannot remove services declared in the base file. The stubs are
+# harmless (they sleep), but if you want a leaner dev loop, target web+redis
+# explicitly as shown above. A `profiles:` migration is a follow-up cleanup.
+
+services:
+  web:
+    build:
+      context: .
+      target: web
+    volumes:
+      # Hot-reload: mount the project root over /app so code changes are live.
+      - .:/app
+      # Keep data volumes from the base compose file.
+      - db-data:/data/db
+      - upload-data:/data/uploads
+      - generated-data:/data/generated
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "1"
+      DATA_DIR: /data
+    command: >
+      python -m flask run
+      --host=0.0.0.0
+      --port=${PORT:-8000}
+      --reload

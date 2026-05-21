@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+
+{% block title %}3D Print Request {{ request_item.id }}{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('print_requests.request_queue') }}">3D Print Queue</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn portal-button" href="{{ url_for('print_requests.create_request') }}">New Request</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>3D Print Request #{{ request_item.id }}</h1>
+    <p class="hint">Review the full request details and attachments below.</p>
+</section>
+
+<section class="card">
+    <div class="detail-grid">
+        <div>
+            <h2>Requester</h2>
+            <p>{{ request_item.requester }}</p>
+        </div>
+        <div>
+            <h2>Team</h2>
+            <p>{{ request_item.team or '–' }}</p>
+        </div>
+        <div>
+            <h2>Request type</h2>
+            <p>{{ request_item.request_type.replace('_', ' ')|title }}</p>
+        </div>
+        <div>
+            <h2>Print status</h2>
+            <p>{{ request_item.print_status }}</p>
+        </div>
+        <div>
+            <h2>Quantity</h2>
+            <p>{{ request_item.quantity or '–' }}</p>
+        </div>
+        <div>
+            <h2>Due date</h2>
+            <p>{{ request_item.due_date or '–' }}</p>
+        </div>
+        <div>
+            <h2>Created</h2>
+            <p>{{ request_item.created_display }}</p>
+        </div>
+        <div>
+            <h2>Jira ticket</h2>
+            <div id="jira-status-block">
+                {% if request_item.jira_ticket_key %}
+                    <p>{{ request_item.jira_ticket_key }}</p>
+                {% elif request_item.jira_task_status in ('pending', 'processing') %}
+                    <span class="status-badge status-badge--pending">Jira ticket pending...</span>
+                {% elif request_item.jira_task_status == 'error' or request_item.jira_sync_error %}
+                    <p class="jira-error-text">{{ request_item.jira_sync_error or 'Jira sync failed.' }}</p>
+                    <form method="post" action="{{ url_for('print_requests.retry_jira_sync', request_id=request_item.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-secondary">Retry Jira sync</button>
+                    </form>
+                {% else %}
+                    <p>Not yet created</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Model details</h2>
+    <p>{{ request_item.detail_text }}</p>
+</section>
+
+<section class="card">
+    <h2>Notes</h2>
+    <pre class="detail-notes">{{ request_item.description or 'No additional notes.' }}</pre>
+</section>
+
+<section class="card">
+    <h2>Attachments</h2>
+    <div class="detail-actions">
+        {% if request_item.uploaded_file_path %}
+        <a class="btn btn-secondary" href="{{ url_for('print_requests.download_request_file', request_id=request_item.id, file_kind='model') }}">Download model file</a>
+        {% else %}
+        <p class="hint">No model file uploaded.</p>
+        {% endif %}
+    </div>
+    {% if request_item.uploaded_image_path %}
+    <div class="detail-preview">
+        <img src="{{ url_for('print_requests.preview_request_file', request_id=request_item.id, file_kind='image') }}" alt="Design image preview">
+        <a class="btn btn-secondary" href="{{ url_for('print_requests.download_request_file', request_id=request_item.id, file_kind='image') }}">Download design image</a>
+    </div>
+    {% else %}
+    <p class="hint">No design image uploaded.</p>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+{% if request_item.jira_task_id and request_item.jira_task_status in ('pending', 'processing') %}
+<script>
+(function () {
+    var taskId = {{ request_item.jira_task_id | tojson }};
+    var statusUrl = "/api/v1/tasks/" + taskId + "/status";
+    var maxAttempts = 30;
+    var attempt = 0;
+    var intervalId;
+
+    function updateBlockText(text, cssClass) {
+        var block = document.getElementById("jira-status-block");
+        if (!block) { return; }
+        while (block.firstChild) { block.removeChild(block.firstChild); }
+        var p = document.createElement("p");
+        p.className = cssClass;
+        p.textContent = text;
+        block.appendChild(p);
+    }
+
+    function poll() {
+        attempt += 1;
+        if (attempt > maxAttempts) {
+            clearInterval(intervalId);
+            updateBlockText("Taking longer than expected — check back later.", "jira-timeout-text");
+            return;
+        }
+
+        fetch(statusUrl)
+            .then(function (resp) { return resp.json(); })
+            .then(function (data) {
+                if (data.state === "SUCCESS") {
+                    clearInterval(intervalId);
+                    window.location.reload();
+                } else if (data.state === "FAILURE") {
+                    clearInterval(intervalId);
+                    updateBlockText(data.error || "Jira sync failed.", "jira-error-text");
+                }
+                // PENDING / STARTED / RETRY -- keep polling
+            })
+            .catch(function () {
+                // Network error -- keep polling silently
+            });
+    }
+
+    intervalId = setInterval(poll, 5000);
+})();
+</script>
+{% endif %}
+{% endblock %}

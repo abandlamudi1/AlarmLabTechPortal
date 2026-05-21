@@ -1,0 +1,22 @@
+# Issue #126: QENG-16846: feat(slice-g-part2): Helm Service — web (ClusterIP)
+#
+# ClusterIP service for the web Deployment.
+# Port 80 → targetPort 8000 (matches PORT default in config.py / values.yaml).
+# The Ingress resource routes external traffic to this service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "lab-tech-portal.fullname" . }}-web
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "lab-tech-portal.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: web

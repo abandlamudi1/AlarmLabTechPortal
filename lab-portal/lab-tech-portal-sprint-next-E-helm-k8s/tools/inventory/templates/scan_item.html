@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Scan or Update Inventory Item{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('inventory.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('inventory.index') }}">Inventory Dashboard</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn" href="{{ url_for('inventory.add_item') }}">Add Item</a>
+{% endblock %}
+
+{% block content %}
+<h1>Scan or Update Inventory Item</h1>
+<p id="scan-form-description" class="form-note">Scan a QR code into the Item ID field, or enter the ID manually.</p>
+
+<form method="post" class="card" aria-describedby="scan-form-description">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-field">
+        <label for="item_id">Item ID <span class="required" aria-hidden="true">*</span></label>
+        <input id="item_id" name="item_id" required aria-required="true">
+    </div>
+    <div class="form-field">
+        <label for="change">Quantity change <span class="required" aria-hidden="true">*</span></label>
+        <input id="change" type="number" name="change" value="-1" step="1" aria-describedby="change-hint" required aria-required="true">
+        <small id="change-hint" class="hint">Enter a negative number to subtract items or positive to add.</small>
+    </div>
+    <div class="form-actions">
+        <button class="btn" type="submit">Update Quantity</button>
+        <a class="btn btn-secondary" href="{{ url_for('inventory.index') }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

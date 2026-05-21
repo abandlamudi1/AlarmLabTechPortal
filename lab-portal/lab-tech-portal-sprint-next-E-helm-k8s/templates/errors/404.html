@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}404 Not Found — Lab Tech Portal{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <h1>404 — Page Not Found</h1>
+    <p>The page you requested could not be found.</p>
+    <p><a class="btn btn-secondary" href="{{ url_for('home') }}">Return to Home</a></p>
+    {% if request_id %}
+    <p class="error-request-id">Request ID: <code>{{ request_id }}</code></p>
+    {% endif %}
+</div>
+{% endblock %}

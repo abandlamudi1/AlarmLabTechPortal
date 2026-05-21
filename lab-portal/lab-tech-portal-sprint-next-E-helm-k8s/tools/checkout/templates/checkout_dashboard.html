@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Equipment Checkout{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('checkout.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block content %}
+<section class="card hero">
+    <h1>Equipment Checkout</h1>
+    <p>Track shared lab gear, see who currently has it, and keep circulation moving smoothly.</p>
+</section>
+
+{% if message %}
+<div class="alert alert-{{ status or 'info' }}">
+    {{ message }}
+</div>
+{% endif %}
+
+<section class="card">
+    <h2>Equipment Status</h2>
+    <table class="table checkout-table">
+        <thead>
+        <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Details</th>
+            <th class="action-heading">Action</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+        {% set is_checked_out = item['checked_out_by'] %}
+        <tr class="{% if is_checked_out %}checked-out{% else %}available{% endif %}">
+            <td>{{ item['name'] }}</td>
+            <td>
+                {% if is_checked_out %}
+                <span class="status badge error">Checked Out</span>
+                {% else %}
+                <span class="status badge success">Available</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if is_checked_out %}
+                <div><strong>By:</strong> {{ item['checked_out_by'] }}</div>
+                {% if item['checked_out_at'] %}
+                <div><strong>Since:</strong> {{ item['checked_out_at'] }}</div>
+                {% endif %}
+                {% if item['return_date'] %}
+                <div><strong>Return Date:</strong> {{ item['return_date'] }}</div>
+                {% endif %}
+                {% if item['jira_link'] %}
+                <div>
+                    <strong>Reference:</strong>
+                    {% if item['jira_link'].startswith('http://') or item['jira_link'].startswith('https://') %}
+                    <a href="{{ item['jira_link'] }}" target="_blank" rel="noopener">{{ item['jira_link'] }}</a>
+                    {% else %}
+                    {{ item['jira_link'] }}
+                    {% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <div>Ready for checkout.</div>
+                {% endif %}
+            </td>
+            <td class="action-cell">
+                {% if is_checked_out %}
+                <form method="post" action="{{ url_for('checkout.return_item', item_id=item['id']) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-secondary" type="submit">Mark Returned</button>
+                </form>
+                {% else %}
+                <form method="post" action="{{ url_for('checkout.checkout_item', item_id=item['id']) }}" class="checkout-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="sr-only" for="checkout-{{ item['id'] }}">Name</label>
+                    <input id="checkout-{{ item['id'] }}" name="user_name" placeholder="Your name" required>
+                    <div class="checkout-field">
+                        <label class="field-label" for="return-date-{{ item['id'] }}">Return Date</label>
+                        <input id="return-date-{{ item['id'] }}" name="return_date" type="date" required>
+                    </div>
+                    <label class="sr-only" for="jira-{{ item['id'] }}">Jira link (optional)</label>
+                    <input id="jira-{{ item['id'] }}" name="jira_link" placeholder="Jira link (optional)">
+                    <button class="btn" type="submit">Check Out</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

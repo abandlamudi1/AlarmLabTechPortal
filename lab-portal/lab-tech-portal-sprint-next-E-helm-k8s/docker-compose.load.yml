@@ -1,0 +1,65 @@
+# docker-compose.load.yml — Locust load-test overlay (Sprint 8, issue #123)
+#
+# Usage (always layer on top of docker-compose.yml):
+#
+#   # Validate YAML only — no containers started:
+#   docker compose -f docker-compose.yml -f docker-compose.load.yml config --quiet
+#
+#   # Start the full stack + Locust headless or UI:
+#   docker compose -f docker-compose.yml -f docker-compose.load.yml up -d
+#   # Then open http://localhost:8089 to start a test run.
+#
+# Auth note: OKTA_ISSUER is intentionally absent from this overlay.  The app
+# detects a missing OKTA_ISSUER at start-up and sets LOGIN_DISABLED=True,
+# which bypasses all login_required checks — the standard mechanism used in
+# unit/integration tests.  Never set OKTA_ISSUER in load-test environments.
+#
+# Jira isolation: set JIRA_DRY_RUN=true (or leave all JIRA_* vars unset)
+# in your .env before running a load test to prevent outbound Jira API calls.
+#
+# Production-default guards that MUST be relaxed for an accurate baseline:
+#   * WTF_CSRF_ENABLED=true blocks every POST that doesn't carry a csrf_token.
+#     Locust's HttpUser does not parse forms or pull tokens — without the
+#     override below, ~30% of the mix (every write task) returns 400 and the
+#     `database is locked` write-path risk that this test exists to surface is
+#     never actually exercised. The override here forces CSRF off only inside
+#     the load-test overlay; the production web image is unaffected.
+#   * RATELIMIT_DEFAULT=60/minute (Flask-Limiter) is per-remote-addr. All 50
+#     simulated users share the locust container's source IP, so the second
+#     minute of a 10-minute baseline would return HTTP 429 for ~49 of every 50
+#     requests. The override below raises the cap to 100000/minute for the
+#     load-test stack; production keeps its 60/minute default.
+
+services:
+  web:
+    # Relax production-default request guards so the load test actually
+    # exercises the write path. See header comment for rationale.
+    environment:
+      WTF_CSRF_ENABLED: "false"
+      RATELIMIT_DEFAULT: "100000 per minute"
+
+  locust:
+    # Locust 2.30.0 — pinned to match locustfile.py header comment.
+    # To upgrade: bump here and update the comment in tests/load/locustfile.py.
+    image: locustio/locust:2.30.0
+    ports:
+      - "8089:8089"
+    volumes:
+      # Mount the load-test directory into the container so Locust picks up
+      # locustfile.py and any future helper modules without a rebuild.
+      - ./tests/load:/mnt/locust:ro
+    command: >
+      -f /mnt/locust/locustfile.py
+      --host http://web:${PORT:-8000}
+    environment:
+      # Explicit no-op: ensure Okta is not configured inside the locust
+      # container (locust itself does not use Flask, but this documents intent).
+      OKTA_ISSUER: ""
+      # Operators: set JIRA_DRY_RUN=true in your shell or .env before running.
+      JIRA_DRY_RUN: ${JIRA_DRY_RUN:-true}
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - default
+    restart: "no"

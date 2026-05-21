@@ -1,0 +1,49 @@
+# Issue #126: QENG-16846: feat(slice-g-part2): Helm Ingress + TLS
+#
+# nginx/traefik Ingress with:
+#   - cert-manager ClusterIssuer annotation for automated TLS (Let's Encrypt or internal CA)
+#   - HTTP→HTTPS redirect enforced (nginx: ssl-redirect annotation)
+#   - Ingress class configurable via values.yaml (nginx vs. traefik)
+#
+# Prerequisites (documented in docs/runbook-k8s.md):
+#   - cert-manager installed and a ClusterIssuer named per ingress.clusterIssuer
+#   - An ingress controller (nginx or traefik) deployed in the cluster
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "lab-tech-portal.fullname" . }}
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+  annotations:
+    # cert-manager: automatically provision a TLS certificate via the named ClusterIssuer.
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.clusterIssuer | quote }}
+    {{- if eq .Values.ingress.className "nginx" }}
+    # nginx: enforce HTTP→HTTPS redirect.
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    {{- else if eq .Values.ingress.className "traefik" }}
+    # traefik: enforce HTTP→HTTPS redirect via middleware.
+    traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-redirect-https@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ .Values.ingress.tls.secretName | quote }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "lab-tech-portal.fullname" . }}-web
+                port:
+                  name: http
+{{- end }}

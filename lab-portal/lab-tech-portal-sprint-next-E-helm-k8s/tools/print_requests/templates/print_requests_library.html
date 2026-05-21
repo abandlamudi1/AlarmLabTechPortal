@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}3D Print Model Library{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn portal-button" href="{{ url_for('print_requests.create_request') }}">New Request</a>
+<a class="btn btn-secondary" href="{{ url_for('print_requests.request_queue') }}">View submitted requests</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>
+        {% if device %}
+        {{ device.name }} Model Library
+        {% else %}
+        3D Print Model Library
+        {% endif %}
+    </h1>
+    <p class="hint">
+        {% if device %}
+        {{ device.description }}
+        {% else %}
+        Browse vetted, ready-to-print parts. Pick a model to jump-start your request with the right settings.
+        {% endif %}
+    </p>
+    {% if device %}
+    <a class="btn btn-secondary" href="{{ url_for('print_requests.list_requests') }}">Back to device library</a>
+    {% endif %}
+    {% if status == 'created' %}
+    <div class="notice notice-success">Request submitted. The 3D print queue will sync to Jira shortly.</div>
+    {% endif %}
+    {% if device and not models %}
+    <div class="notice">No models are available for this device yet.</div>
+    {% endif %}
+</section>
+
+<section class="card model-library">
+    <h2>Available models</h2>
+    <div class="model-grid">
+        {% for item in models %}
+        <article class="model-card">
+            <div class="model-preview" data-previews='{{ item.preview_urls | tojson }}'>
+                {% if item.preview_urls %}
+                <img class="model-preview-image" src="{{ item.preview_urls[0] }}" alt="Preview of {{ item.name }}" loading="lazy">
+                {% endif %}
+                {% if item.preview_urls | length > 1 %}
+                <div class="model-preview-controls" role="group" aria-label="{{ item.name }} preview selection">
+                    {% for preview in item.preview_urls %}
+                    <button type="button" class="model-preview-button{% if loop.first %} is-active{% endif %}" data-index="{{ loop.index0 }}" aria-pressed="{% if loop.first %}true{% else %}false{% endif %}">
+                        View {{ loop.index }}
+                    </button>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="model-body">
+                <h3>{{ item.name }}</h3>
+                <p class="model-description">{{ item.description }}</p>
+                <ul class="model-tags">
+                    <li>{{ item.category_label }}</li>
+                    <li>{{ item.device_label }}</li>
+                    <li>{{ item.variant_label }}</li>
+                </ul>
+            </div>
+            <div class="model-actions">
+                <a class="btn portal-button" href="{{ item.submit_url }}">Submit request for this model</a>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<script>
+    const previewCards = document.querySelectorAll(".model-preview[data-previews]");
+    previewCards.forEach((card) => {
+        const data = card.getAttribute("data-previews");
+        if (!data) {
+            return;
+        }
+        let previews = [];
+        try {
+            previews = JSON.parse(data);
+        } catch (err) {
+            return;
+        }
+        if (!Array.isArray(previews) || previews.length <= 1) {
+            return;
+        }
+        const image = card.querySelector(".model-preview-image");
+        const buttons = card.querySelectorAll(".model-preview-button");
+        if (!image || !buttons.length) {
+            return;
+        }
+        buttons.forEach((button) => {
+            button.addEventListener("click", () => {
+                const index = Number(button.dataset.index || 0);
+                if (!previews[index]) {
+                    return;
+                }
+                image.src = previews[index];
+                buttons.forEach((item) => {
+                    item.classList.remove("is-active");
+                    item.setAttribute("aria-pressed", "false");
+                });
+                button.classList.add("is-active");
+                button.setAttribute("aria-pressed", "true");
+            });
+        });
+    });
+</script>
+{% endblock %}

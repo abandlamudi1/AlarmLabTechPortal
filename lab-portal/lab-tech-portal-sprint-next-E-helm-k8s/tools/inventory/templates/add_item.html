@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Inventory Item{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('inventory.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('inventory.index') }}">Inventory Dashboard</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn" href="{{ url_for('inventory.scan_item') }}">Scan/Update Item</a>
+{% endblock %}
+
+{% block content %}
+<h1>Add New Inventory Item</h1>
+
+<form method="post" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-field">
+        <label for="name">Name <span class="required" aria-hidden="true">*</span></label>
+        <input id="name" name="name" required aria-required="true">
+    </div>
+    <div class="form-field">
+        <label for="description">Description</label>
+        <input id="description" name="description" aria-describedby="description-hint">
+        <small id="description-hint" class="hint">Optional: include vendor, part number, or key usage details.</small>
+    </div>
+    <div class="form-field">
+        <label for="quantity">Quantity on hand <span class="required" aria-hidden="true">*</span></label>
+        <input id="quantity" type="number" name="quantity" value="1" min="0" required aria-required="true">
+    </div>
+    <div class="form-field">
+        <label for="min_stock">Reorder threshold <span class="required" aria-hidden="true">*</span></label>
+        <input id="min_stock" type="number" name="min_stock" value="1" min="0" required aria-required="true">
+    </div>
+    <div class="form-actions">
+        <button class="btn" type="submit">Add Item</button>
+        <a class="btn btn-secondary" href="{{ url_for('inventory.index') }}">Cancel</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}3D Print Queue History{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('print_requests.request_queue') }}">3D Print Queue</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn portal-button" href="{{ url_for('print_requests.create_request') }}">New Request</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>3D Print Queue History</h1>
+    <p class="hint">Closed and cancelled requests are archived here.</p>
+</section>
+
+<section class="card table-card">
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Requester</th>
+                <th>Request type</th>
+                <th>Print status</th>
+                <th>Jira ticket</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in requests %}
+            <tr>
+                <td>{{ item.requester }}</td>
+                <td>{{ item.request_type.replace('_', ' ')|title }}</td>
+                <td>{{ item.print_status }}</td>
+                <td>{{ item.jira_status }}</td>
+                <td>
+                    <a class="btn btn-secondary" href="{{ url_for('print_requests.request_detail', request_id=item.id) }}">View</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td class="empty" colspan="5">No archived requests yet.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

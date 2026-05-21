@@ -1,0 +1,190 @@
+# docker-compose.yml — full production stack (Slice G-part1, issue #20)
+#
+# Services:
+#   web     — Flask/Gunicorn application (Dockerfile target: web)
+#   worker  — Celery worker stub (topology only; Slice C activates)
+#   beat    — Celery beat stub   (topology only; Slice C activates)
+#   redis   — Message broker + result backend (Slice C) and session store (Slice D-part2)
+#
+# Quickstart:
+#   cp .env.example .env   # fill in secrets
+#   docker compose up -d
+#
+# Data is persisted in named volumes (see bottom of this file).
+
+services:
+  web:
+    build:
+      context: .
+      target: web
+    image: lab-tech-portal:web
+    # Map host:container consistently so PORT controls both sides.
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    env_file:
+      - .env
+    environment:
+      # DATA_DIR mounts are aspirational — the app code does not yet read
+      # DATA_DIR. Slice D-part1 (Sprint 3) wires the SQLite paths through it;
+      # the volume mounts are pre-staged here so that work is a code-only diff.
+      DATA_DIR: /data
+      # FLASK_ENV is overridable via .env (CI sets FLASK_ENV=testing).
+      FLASK_ENV: ${FLASK_ENV:-production}
+    volumes:
+      - db-data:/data/db
+      - upload-data:/data/uploads
+      - generated-data:/data/generated
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:${PORT:-8000}/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      target: worker
+    image: lab-tech-portal:worker
+    profiles: [worker]
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+      # Sprint 6 Issue #90: worker tuning — override in .env or compose override.
+      # CELERY_WORKER_CONCURRENCY: when not set, the Python config default
+      # (os.cpu_count() or 2) determines concurrency.  Set explicitly here
+      # to override for a fixed count in compose-managed deployments.
+      # CELERY_QUEUES is a comma-separated list passed to celery worker -Q.
+      CELERY_WORKER_CONCURRENCY: ${CELERY_WORKER_CONCURRENCY:-}
+      CELERY_QUEUES: ${CELERY_QUEUES:-celery}
+    volumes:
+      - db-data:/data/db
+      - upload-data:/data/uploads
+      - generated-data:/data/generated
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # NOTE: Celery worker is non-functional until Slice C (Sprint 3).
+    # The container runs a no-op stub to validate the topology.
+
+  beat:
+    build:
+      context: .
+      target: beat
+    image: lab-tech-portal:beat
+    profiles: [worker]
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /data
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # NOTE: Celery beat is non-functional until Slice C (Sprint 3).
+    # The container runs a no-op stub to validate the topology.
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Slice B, Issue #32: Prometheus — always starts (no profile guard).
+  # Scrapes /metrics from the web container every 15 seconds.
+  # Access UI at http://localhost:9090 during local dev.
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./docs/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    depends_on:
+      - web
+    restart: unless-stopped
+
+  # Slice B, Issue #32: Grafana — optional, run with --profile grafana.
+  # Import docs/grafana/lab-tech-portal-dashboard.json after first start.
+  # Access UI at http://localhost:3000 (admin/admin).
+  grafana:
+    image: grafana/grafana:10.4.2
+    profiles: [grafana]
+    ports:
+      - "3000:3000"
+    environment:
+      # Set GF_SECURITY_ADMIN_PASSWORD in .env — no insecure default.
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # Sprint 8, Issue #29: MinIO — S3-compatible object storage for local dev.
+  #
+  # Profile-gated so it does NOT start on plain `docker compose up`.
+  # Start with:
+  #   docker compose --profile storage up minio
+  #
+  # Then set in .env:
+  #   OBJECT_STORAGE_BACKEND=s3
+  #   S3_ENDPOINT_URL=http://localhost:9000
+  #   S3_BUCKET=lab-portal
+  #   S3_ACCESS_KEY=minioadmin
+  #   S3_SECRET_KEY=minioadmin
+  #
+  # The MinIO console is available at http://localhost:9001 (login: minioadmin/minioadmin).
+  minio:
+    image: minio/minio:latest
+    profiles: [storage]
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # MinIO web console
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  db-data:
+    driver: local
+  upload-data:
+    driver: local
+  generated-data:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  minio-data:
+    driver: local

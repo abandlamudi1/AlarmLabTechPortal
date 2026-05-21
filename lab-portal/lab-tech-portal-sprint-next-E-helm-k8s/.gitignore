@@ -1,0 +1,21 @@
+venv/
+.venv/
+__pycache__/
+.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.pyc
+
+# macOS / editor noise
+.DS_Store
+.vscode/
+.idea/
+
+.pytest_cache/
+
+# User-uploaded data (Slice D-part1 moves this under DATA_DIR)
+tools/print_requests/uploads/
+tools/inventory/static/qr_*.png
+tools/rf_chamber/static/qr_*.png

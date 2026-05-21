@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+
+{% block title %}New 3D Print Request{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('print_requests.list_requests') }}">3D Print Requests</a>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1>Submit a 3D Print Request</h1>
+    <p class="hint">All requests are reviewed before being synced to Jira Lab Requests.</p>
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-field">
+            <label for="requester">Requester name<span class="required">*</span></label>
+            <input id="requester" name="requester" type="text" value="{{ form.requester }}" required>
+            {% if errors.requester %}<p class="error">{{ errors.requester }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="team">Team or group</label>
+            <input id="team" name="team" type="text" value="{{ form.team }}">
+        </div>
+
+        <div class="form-field">
+            <label for="request_type">Request type<span class="required">*</span></label>
+            <select id="request_type" name="request_type">
+                <option value="existing_model" {% if form.request_type == 'existing_model' %}selected{% endif %}>Existing model</option>
+                <option value="upload_file" {% if form.request_type == 'upload_file' %}selected{% endif %}>Upload file</option>
+                <option value="new_design" {% if form.request_type == 'new_design' %}selected{% endif %}>New design request</option>
+            </select>
+            {% if errors.request_type %}<p class="error">{{ errors.request_type }}</p>{% endif %}
+        </div>
+
+        <div class="js-existing-model">
+            <div class="form-field">
+                <label for="model_device">Model</label>
+                <select id="model_device" name="model_device">
+                    {% if model_devices %}
+                        <option value="" disabled {% if not form.model_device %}selected{% endif %}>Select a model</option>
+                        {% for option in model_devices %}
+                        <option value="{{ option.key }}" {% if form.model_device == option.key %}selected{% endif %}>{{ option.label }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="" disabled selected>No models available</option>
+                    {% endif %}
+                </select>
+            </div>
+
+            <div class="form-field">
+                <label for="model_variant">Variant</label>
+                <select id="model_variant" name="model_variant" {% if not form.model_device %}disabled{% endif %}>
+                    <option value="" disabled {% if not form.model_variant %}selected{% endif %}>Select a variant</option>
+                    {% for device in model_devices %}
+                        {% for variant in device.variants %}
+                        <option value="{{ variant.value }}" data-device="{{ device.key }}" {% if form.model_variant == variant.value %}selected{% endif %}>{{ variant.label }}</option>
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+                {% if errors.model_choice %}<p class="error">{{ errors.model_choice }}</p>{% endif %}
+            </div>
+        </div>
+
+        <div class="form-field js-upload-file">
+            <label for="upload">Upload file <span class="js-upload-optional">(optional)</span></label>
+            <input id="upload" name="upload" type="file" accept=".stl,.3mf">
+            <p class="hint">Accepted formats: {{ allowed_extensions|join(', ')|upper }}</p>
+            {% if errors.upload %}<p class="error">{{ errors.upload }}</p>{% endif %}
+        </div>
+
+        <div class="form-field js-new-design-image">
+            <label for="design_image">Upload model image (optional)</label>
+            <input id="design_image" name="design_image" type="file" accept=".png,.jpg,.jpeg">
+            <p class="hint">Accepted formats: {{ allowed_image_extensions|join(', ')|upper }}</p>
+            {% if errors.design_image %}<p class="error">{{ errors.design_image }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="quantity">Quantity<span class="required">*</span></label>
+            <input id="quantity" name="quantity" type="number" min="1" value="{{ form.quantity or '1' }}">
+            {% if errors.quantity %}<p class="error">{{ errors.quantity }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="due_date">Due date</label>
+            <input id="due_date" name="due_date" type="date" value="{{ form.due_date }}">
+            <p class="hint">Some high‑quality prints may take 12–24 hours. Please allow sufficient time for printing and post‑processing when selecting a due date.</p>
+            {% if errors.due_date %}<p class="error">{{ errors.due_date }}</p>{% endif %}
+        </div>
+
+        <div class="form-field">
+            <label for="description">Description / notes</label>
+            <textarea id="description" name="description" rows="4">{{ form.description }}</textarea>
+            {% if errors.description %}<p class="error">{{ errors.description }}</p>{% endif %}
+        </div>
+
+        <p class="hint">Jira tickets are created automatically when credentials are configured.</p>
+
+        <div class="form-actions">
+            <button class="btn" type="submit">Submit request</button>
+            <a class="btn btn-secondary" href="{{ url_for('print_requests.list_requests') }}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block page_scripts %}
+{{ super() }}
+<script>
+(function () {
+    const typeSelect = document.getElementById('request_type');
+    const existingSection = document.querySelector('.js-existing-model');
+    const uploadSection = document.querySelector('.js-upload-file');
+    const modelDevice = document.getElementById('model_device');
+    const newDesignImage = document.querySelector('.js-new-design-image');
+    const uploadOptional = document.querySelector('.js-upload-optional');
+    const modelVariant = document.getElementById('model_variant');
+    const variantOptions = modelVariant ? Array.from(modelVariant.querySelectorAll('option[data-device]')) : [];
+
+    const syncVisibility = () => {
+        const value = typeSelect.value;
+        existingSection.style.display = value === 'existing_model' ? '' : 'none';
+        const showUploads = value === 'upload_file' || value === 'new_design';
+        const isNewDesign = value === 'new_design';
+        uploadSection.style.display = showUploads ? '' : 'none';
+        if (newDesignImage) {
+            newDesignImage.style.display = showUploads ? '' : 'none';
+        }
+        if (uploadOptional) {
+            uploadOptional.style.display = isNewDesign ? '' : 'none';
+        }
+    };
+
+    const syncVariants = () => {
+        if (!modelVariant) {
+            return;
+        }
+        const selectedDevice = modelDevice ? modelDevice.value : '';
+        let hasMatch = false;
+        variantOptions.forEach((option) => {
+            const matches = selectedDevice && option.dataset.device === selectedDevice;
+            option.hidden = !matches;
+            if (!matches && option.selected) {
+                option.selected = false;
+            }
+            if (matches) {
+                hasMatch = true;
+            }
+        });
+
+        if (modelVariant.options.length) {
+            const placeholder = modelVariant.options[0];
+            if (!hasMatch) {
+                placeholder.selected = true;
+            }
+        }
+        modelVariant.disabled = !hasMatch;
+    };
+
+    if (modelDevice) {
+        modelDevice.addEventListener('change', syncVariants);
+    }
+
+    typeSelect.addEventListener('change', () => {
+        syncVisibility();
+        syncVariants();
+    });
+
+    syncVisibility();
+    syncVariants();
+})();
+</script>
+{% endblock %}

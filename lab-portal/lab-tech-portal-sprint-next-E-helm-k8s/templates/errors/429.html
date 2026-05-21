@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}429 Too Many Requests — Lab Tech Portal{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <h1>429 — Too Many Requests</h1>
+    <p>You have sent too many requests in a short time. Please wait a moment and try again.</p>
+    <p><a class="btn btn-secondary" href="{{ url_for('home') }}">Return to Home</a></p>
+    {% if request_id %}
+    <p class="error-request-id">Request ID: <code>{{ request_id }}</code></p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(*alembic*downgrade*base*)",
+      "Bash(*alembic*downgrade* -[0-9]*)",
+      "Bash(*alembic*downgrade*-[0-9]*)",
+      "Bash(*DROP TABLE*)",
+      "Bash(*TRUNCATE *)",
+      "Bash(*docker compose down* -v*)",
+      "Bash(*docker compose down*--volumes*)",
+      "Bash(*docker volume rm*)",
+      "Bash(*docker volume prune*)"
+    ]
+  }
+}

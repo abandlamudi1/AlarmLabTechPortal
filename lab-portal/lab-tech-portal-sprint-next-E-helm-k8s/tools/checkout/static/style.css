@@ -1,0 +1,122 @@
+.checkout-table tbody tr.available {
+    background-color: rgba(76, 175, 80, 0.08);
+}
+
+.checkout-table tbody tr.checked-out {
+    background-color: rgba(229, 115, 115, 0.08);
+}
+
+.checkout-table .action-cell {
+    min-width: 220px;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    align-items: flex-start;
+}
+
+.checkout-table th.action-heading {
+    text-align: center;
+}
+
+.checkout-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+.checkout-form input {
+    flex: 0 0 auto;
+    width: 160px;
+    max-width: 180px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
+}
+
+.checkout-form input[type="date"] {
+    width: 140px;
+    max-width: 150px;
+}
+
+.checkout-form input[name="jira_link"] {
+    width: 180px;
+}
+
+.checkout-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-start;
+    flex: 0 0 auto;
+}
+
+.checkout-form .checkout-field input {
+    width: 140px;
+    max-width: 150px;
+}
+
+.field-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted-text);
+}
+
+.checkout-form button {
+    flex: 0 0 auto;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.badge.success {
+    background-color: rgba(76, 175, 80, 0.18);
+    color: #1b5e20;
+}
+
+.badge.error {
+    background-color: rgba(239, 83, 80, 0.18);
+    color: #b71c1c;
+}
+
+.alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    margin-bottom: 12px;
+}
+
+.alert-success {
+    background-color: rgba(76, 175, 80, 0.12);
+    border-color: rgba(56, 142, 60, 0.32);
+    color: #1b5e20;
+}
+
+.alert-error {
+    background-color: rgba(239, 83, 80, 0.12);
+    border-color: rgba(198, 40, 40, 0.32);
+    color: #b71c1c;
+}
+
+.alert-info {
+    background-color: rgba(100, 181, 246, 0.12);
+    border-color: rgba(30, 136, 229, 0.32);
+    color: #0d47a1;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}

@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block title %}Lab Tech Portal{% endblock %}
+
+{% block content %}
+<section class="home-intro">
+    <h1>Lab Tech Portal</h1>
+    <p>Quick access to the tools you use to support the labs.</p>
+</section>
+
+<section class="card home-primary">
+    <div class="section-heading">
+        <h2>Primary Actions</h2>
+    </div>
+    <div class="action-grid">
+        <article class="action-card">
+            <h3>System Locator</h3>
+            <p>Find lab systems by CID, login, or identifier.</p>
+            <a class="btn portal-button" href="{{ url_for('systems.dashboard') }}">Locate System</a>
+        </article>
+        <article class="action-card">
+            <h3>Add System Profile</h3>
+            <p>Register a new lab system and its location.</p>
+            <a class="btn portal-button" href="{{ url_for('systems.create_system') }}">New System</a>
+        </article>
+        <article class="action-card">
+            <h3>Equipment Checkout</h3>
+            <p>Check shared lab gear in or out.</p>
+            <a class="btn portal-button" href="{{ url_for('checkout.dashboard') }}">Open Checkout</a>
+        </article>
+        <article class="action-card">
+            <h3>3D Print Requests</h3>
+            <p>Submit or review print requests.</p>
+            <a class="btn portal-button" href="{{ url_for('print_requests.create_request') }}">New Request</a>
+        </article>
+    </div>
+</section>
+
+<section class="card home-secondary">
+    <div class="section-heading">
+        <h2>Other Tools</h2>
+    </div>
+    <ul class="secondary-links">
+        <li><a href="{{ url_for('inventory.index') }}">Inventory Tracker</a></li>
+        <li><a href="{{ url_for('rf_chamber.dashboard') }}">RF Chamber Database</a></li>
+        <li><a href="{{ url_for('print_requests.list_requests') }}">3D Print Model Library</a></li>
+        <li><a href="{{ url_for('resources') }}">Lab Resources</a></li>
+    </ul>
+</section>
+{% endblock %}

@@ -1,0 +1,51 @@
+# Issue #125: QENG-16846: feat(slice-g-part2): Helm Deployment — Celery worker
+#
+# F04 (Celery autodiscovery): celery_app.py's include= list covers all task
+# modules at runtime (tasks.print_request_tasks, tasks.system_locator_tasks,
+# tasks.periodic). The worker command does not need --include flags.
+# F22: All service URLs use Kubernetes service names (configured via ConfigMap).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "lab-tech-portal.fullname" . }}-worker
+  labels:
+    {{- include "lab-tech-portal.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.replicaCount.worker }}
+  selector:
+    matchLabels:
+      {{- include "lab-tech-portal.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "lab-tech-portal.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+      annotations:
+        # ConfigMap checksum — triggers a rolling restart when the ConfigMap changes.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - "exec celery -A app worker --loglevel=info --concurrency ${CELERY_WORKER_CONCURRENCY:-2} -Q ${CELERY_QUEUES:-celery}"
+          envFrom:
+            # Non-secret runtime configuration.
+            - configMapRef:
+                name: {{ include "lab-tech-portal.configMapName" . }}
+            # Secret values managed via SealedSecrets (issue #51).
+            - secretRef:
+                name: {{ include "lab-tech-portal.secretName" . }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.worker.requests.cpu }}
+              memory: {{ .Values.resources.worker.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.worker.limits.cpu }}
+              memory: {{ .Values.resources.worker.limits.memory }}
+      restartPolicy: Always

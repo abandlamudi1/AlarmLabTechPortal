@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}RF Chamber Database{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('rf_chamber.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block toolbar_secondary %}
+<a class="btn" href="{{ url_for('rf_chamber.add_chamber') }}">Add RF Chamber</a>
+{% endblock %}
+
+{% block content %}
+<h1>RF Chamber Database</h1>
+
+{% if message %}
+<div class="notice notice-{{ category }}">{{ message }}</div>
+{% endif %}
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Chamber ID</th>
+        <th>Size</th>
+        <th>I/O Ports &amp; Accessories</th>
+        <th>Project / Testing Purpose</th>
+        <th>Location</th>
+        <th>Owner</th>
+        <th>QR Code</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for chamber in chambers %}
+    <tr>
+        <td>{{ chamber.barcode }}</td>
+        <td>{{ chamber.size }}</td>
+        <td>{{ chamber.ports }}</td>
+        <td>{{ chamber.purpose }}</td>
+        <td>{{ chamber.location }}</td>
+        <td>{{ chamber.owner }}</td>
+        <td class="qr-code">
+            <img src="{{ chamber.qr_code_data }}" alt="QR code for {{ chamber.barcode }}">
+        </td>
+        <td class="actions">
+            <a class="btn" href="{{ chamber.edit_url }}">Edit</a>
+        </td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="8" class="empty">No chambers logged yet.</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

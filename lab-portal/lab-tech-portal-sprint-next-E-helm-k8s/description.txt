@@ -1,0 +1,47 @@
+{panel:title=Info|titleBGColor=#20b2aa|bgColor=#ffffff}
+||ENV||CID||Username||Password||Virtual||Dealer||Owner team||Alarm.com serial # (imei)||
+|TEST|10605128|svAuto_Climax_RPM|Automation1!|NA|1|NA|860871056412888|
+
+ 
+||System email||Service package and addons||Dealer enrollments||
+|automationtest@alarm.com|Interactive Gold‎|na|
+
+ 
+||Suites running on system||
+| # 10 Floor|
+
+ 
+{panel}
+----
+{panel:title=Hardware:|titleBGColor=#2071b2|bgColor=#ffffff}
+*Physical Devices on system:*
+||Panel||Sensors||zWave / Zigbee||Cameras||Others||
+|Climax|1 Front Door
+2 Back|ID: 2 Theromstat
+ID: 7 Thermostat
+ID: 4 Lock
+ID: 5 Light Dimmer|na|na|
+
+ 
+
+*Virtual Devices on system:*
+||Sensors||zWave / Zigbee||Cameras||Others||
+|na|na|na|na|
+
+ 
+
+*Connectivity and Raspberry PI control:*
+||WiFi / LAN ||Attached RasPi IP||RasPi MAC||RasPi HW control capabilities||Unique ID / no. inv. SV||
+|na|na|na|na|na|
+{panel}
+ 
+----
+{panel:title=Setup instructions|titleBGColor=#20b261|bgColor=#ffffff}
+Please add any special instructions for the lab tech team to support this panel:
+
+Instructions:
+{panel}
+ 
+{panel}
+ 
+{panel}
