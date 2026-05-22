@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lab-portal",
+      "runtimeExecutable": "/Users/ankthba/Downloads/alarm/AlarmLabTechPortal/lab-portal/lab-tech-portal-sprint-next-E-helm-k8s/.venv/bin/python",
+      "runtimeArgs": ["-m", "flask", "--app", "app", "run", "--port", "5001"],
+      "port": 5001,
+      "env": {
+        "SECRET_KEY": "localdev",
+        "CELERY_BROKER_URL": "redis://localhost:6379/0",
+        "FLASK_ENV": "development",
+        "FLASK_DEBUG": "1"
+      }
+    }
+  ]
+}

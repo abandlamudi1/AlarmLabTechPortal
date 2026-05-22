@@ -1,0 +1,121 @@
+/* Admin audit dashboard styles. Reuses the portal design tokens from
+   static/style.css (loaded first via base.html). */
+
+.audit-alert {
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--card-border);
+    background-color: var(--card-muted-bg);
+}
+
+.audit-alert-success {
+    background-color: var(--notice-success-bg);
+    border-color: var(--notice-success-border);
+    color: var(--notice-success-text);
+}
+
+.audit-alert-error {
+    background-color: var(--notice-error-bg);
+    border-color: var(--notice-error-border);
+    color: var(--notice-error-text);
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px;
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    background-color: var(--card-muted-bg);
+}
+
+.stat-number {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.stat-label {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.stat-hint {
+    font-size: 0.85rem;
+    color: var(--muted-text);
+}
+
+.bar-track {
+    width: 100%;
+    min-width: 120px;
+    height: 10px;
+    border-radius: 999px;
+    background-color: var(--card-muted-bg);
+    border: 1px solid var(--card-border);
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    background-color: var(--btn-primary-bg);
+}
+
+.retention-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.retention-form .field-label {
+    display: block;
+    width: 100%;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.retention-form input[type="number"] {
+    padding: 8px 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    background-color: var(--card-bg);
+    color: var(--text);
+    max-width: 160px;
+}
+
+.retention-form input[type="number"]:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.pager {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.pager-page {
+    color: var(--muted-text);
+    font-size: 0.9rem;
+}
+
+.empty {
+    color: var(--muted-text);
+}
+
+td code {
+    font-size: 0.82rem;
+    word-break: break-word;
+}

@@ -186,6 +186,34 @@ def backup_databases(self):  # type: ignore[override]
 # Task 4 — Clean up orphaned temp upload files (weekly on Sunday)
 # ---------------------------------------------------------------------------
 
+@shared_task(bind=True, max_retries=3, name="tasks.periodic.purge_audit_log")
+def purge_audit_log(self):  # type: ignore[override]
+    """Delete audit events older than the admin-configured retention window.
+
+    The retention value is set by admins via the /admin/audit-log page and
+    stored in the audit DB. When retention is unset (or 0), events are kept
+    indefinitely and this task is a no-op.
+    """
+    try:
+        from services.audit_log import get_retention_days, purge_old_events
+
+        retention = get_retention_days()
+        if not retention or retention <= 0:
+            logger.info("purge_audit_log: retention disabled, nothing purged")
+            return {"deleted": 0, "retention_days": retention}
+
+        deleted = purge_old_events(retention)
+        logger.info(
+            "purge_audit_log: deleted %d event(s) older than %d day(s)",
+            deleted,
+            retention,
+        )
+        return {"deleted": deleted, "retention_days": retention}
+    except Exception as exc:
+        logger.error("purge_audit_log failed: %s", exc, exc_info=True)
+        raise self.retry(exc=exc, countdown=120)
+
+
 @shared_task(bind=True, max_retries=3, name="tasks.periodic.cleanup_temp_uploads")
 def cleanup_temp_uploads(self):  # type: ignore[override]
     """Remove orphaned files from the print-request upload staging directory.

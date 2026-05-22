@@ -38,7 +38,7 @@
 .rf-form textarea:focus {
     outline: none;
     border-color: var(--btn-primary-bg);
-    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .error {
@@ -89,7 +89,7 @@
 .accessory-qty:focus {
     outline: none;
     border-color: var(--btn-primary-bg);
-    box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.2);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .inline-label {

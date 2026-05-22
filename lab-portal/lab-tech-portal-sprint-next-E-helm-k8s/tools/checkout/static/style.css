@@ -105,9 +105,9 @@
 }
 
 .alert-info {
-    background-color: rgba(100, 181, 246, 0.12);
-    border-color: rgba(30, 136, 229, 0.32);
-    color: #0d47a1;
+    background-color: rgba(232, 80, 10, 0.08);
+    border-color: rgba(232, 80, 10, 0.25);
+    color: var(--link);
 }
 
 .sr-only {

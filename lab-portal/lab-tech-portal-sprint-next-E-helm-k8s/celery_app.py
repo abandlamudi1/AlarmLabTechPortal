@@ -18,6 +18,7 @@ def make_celery(app):
     - check-stale-checkouts   daily at 09:00 UTC
     - backup-databases        daily at 02:00 UTC
     - cleanup-temp-uploads    weekly on Sunday at 00:00 UTC
+    - purge-audit-log         daily at 03:00 UTC
 
     Sprint 6 Issue #90 — production worker tuning:
     - task_acks_late: task is acknowledged after completion, not on receipt.
@@ -81,6 +82,10 @@ def make_celery(app):
         "cleanup-temp-uploads": {
             "task": "tasks.periodic.cleanup_temp_uploads",
             "schedule": crontab(day_of_week=0, hour=0, minute=0),  # Sunday 00:00 UTC
+        },
+        "purge-audit-log": {
+            "task": "tasks.periodic.purge_audit_log",
+            "schedule": crontab(hour=3, minute=0),  # daily 03:00 UTC
         },
     }
     celery.conf.timezone = "UTC"

@@ -41,6 +41,7 @@ from tools.print_requests.print_requests_app import print_requests_bp
 from tools.print_requests.db import init_app as _print_requests_init_app
 import tools.print_requests.db as _print_requests_db
 from tools.api_v1.api_v1_app import api_v1_bp
+from tools.admin.admin_app import admin_bp
 
 app = Flask(__name__)
 
@@ -244,6 +245,7 @@ app.register_blueprint(checkout_bp, url_prefix="/checkout")
 app.register_blueprint(systems_bp, url_prefix="/systems")
 app.register_blueprint(print_requests_bp, url_prefix="/print-requests")
 app.register_blueprint(api_v1_bp, url_prefix="/api/v1")
+app.register_blueprint(admin_bp, url_prefix="/admin")
 csrf.exempt(api_v1_bp)
 
 # --- Slice H, Issue #53: mount Swagger UI at /api/v1/docs (dev/test only) ---
@@ -328,6 +330,23 @@ def load_user(user_id: str) -> Optional[User]:
 @login_manager.unauthorized_handler
 def handle_unauthorized():
     return redirect(url_for("login", next=request.url))
+
+
+@app.context_processor
+def _inject_role_flags():
+    """Expose ``is_admin`` to all templates so admin-only links can be hidden.
+
+    Mirrors services.rbac: in LOGIN_DISABLED (local dev) every user is treated
+    as admin; otherwise the tier is derived from the Okta groups claim.
+    """
+    if current_app.config.get("LOGIN_DISABLED"):
+        return {"is_admin": True}
+    identity = session.get("user_identity") or {}
+    if not identity:
+        return {"is_admin": False}
+    from services.rbac import get_user_tier
+
+    return {"is_admin": get_user_tier(identity.get("groups", [])) == "admin"}
 
 
 def _is_safe_redirect(target: str) -> bool:

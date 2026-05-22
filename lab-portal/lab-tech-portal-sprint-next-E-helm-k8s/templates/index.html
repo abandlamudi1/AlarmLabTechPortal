@@ -47,4 +47,15 @@
         <li><a href="{{ url_for('resources') }}">Lab Resources</a></li>
     </ul>
 </section>
+
+{% if is_admin %}
+<section class="card home-admin">
+    <div class="section-heading">
+        <h2>Admin</h2>
+    </div>
+    <ul class="secondary-links">
+        <li><a href="{{ url_for('admin.audit_dashboard') }}">Audit Log &amp; Retention</a></li>
+    </ul>
+</section>
+{% endif %}
 {% endblock %}

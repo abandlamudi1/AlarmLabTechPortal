@@ -21,23 +21,25 @@
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to main content</a>
-<div class="app-shell">
-    <header class="topbar">
-        <div class="toolbar">
-            <nav class="toolbar-links" aria-label="Primary navigation">
+<header class="site-header">
+    <div class="header-inner">
+        <div class="header-start">
+            <a class="brand-logo" href="{{ url_for('home') }}">Lab Tech Portal</a>
+            <nav class="header-nav" aria-label="Primary navigation">
                 {% block toolbar_primary %}{% endblock %}
             </nav>
-            <nav class="toolbar-links" aria-label="Secondary navigation">
-                {% block toolbar_secondary %}{% endblock %}
-                {% if current_user.is_authenticated %}
-                <span class="user-chip">{{ current_user.display_name }} ({{ current_user.email }})</span>
-                <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
-                {% endif %}
-                <button id="themeToggle" class="btn btn-secondary" type="button" aria-pressed="false">Dark Mode</button>
-            </nav>
         </div>
-    </header>
-
+        <div class="header-end">
+            {% block toolbar_secondary %}{% endblock %}
+            {% if current_user.is_authenticated %}
+            <span class="user-chip">{{ current_user.display_name }} ({{ current_user.email }})</span>
+            <a class="btn btn-secondary" href="{{ url_for('logout') }}">Log out</a>
+            {% endif %}
+            <button id="themeToggle" class="btn btn-secondary" type="button" aria-pressed="false">Dark Mode</button>
+        </div>
+    </div>
+</header>
+<div class="app-shell">
     <main class="content" id="main">
         {% block content %}{% endblock %}
     </main>

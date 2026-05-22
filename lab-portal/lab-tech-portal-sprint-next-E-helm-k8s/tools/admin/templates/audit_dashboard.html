@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Audit Log — Admin{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('admin.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+{% endblock %}
+
+{% block content %}
+<section class="card hero">
+    <h1>Audit Log</h1>
+    <p>Review security-sensitive activity, see who's active, and control how long records are kept.</p>
+</section>
+
+{% if message %}
+<div class="audit-alert audit-alert-{{ status or 'info' }}">
+    {{ message }}
+</div>
+{% endif %}
+
+<section class="card">
+    <h2>Last {{ window_days }} days</h2>
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ active_users }}</span>
+            <span class="stat-label">Active user{{ '' if active_users == 1 else 's' }}</span>
+            <span class="stat-hint">Distinct people who performed a logged action</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ activity | sum(attribute='count') }}</span>
+            <span class="stat-label">Logged actions</span>
+            <span class="stat-hint">Total events recorded in the window</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">
+                {% if retention_days %}{{ retention_days }}d{% else %}∞{% endif %}
+            </span>
+            <span class="stat-label">Retention</span>
+            <span class="stat-hint">
+                {% if retention_days %}Events older than this are purged{% else %}Events kept indefinitely{% endif %}
+            </span>
+        </div>
+    </div>
+</section>
+
+<section class="card">
+    <h2>Activity by area</h2>
+    <p class="stat-hint">Which actions happened most in the last {{ window_days }} days.</p>
+    {% if activity %}
+    {% set top = activity[0].count %}
+    <table>
+        <thead>
+        <tr>
+            <th>Action</th>
+            <th>Count</th>
+            <th>Share</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in activity %}
+        <tr>
+            <td>{{ row.action }}</td>
+            <td>{{ row.count }}</td>
+            <td>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width: {{ (row.count / top * 100) | round(1) }}%"></div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No activity recorded in the last {{ window_days }} days.</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>Retention policy</h2>
+    <p class="stat-hint">
+        Set how many days of audit history to keep. Older records are deleted automatically
+        each day. Leave blank or enter 0 to keep everything.
+    </p>
+    <form method="post" action="{{ url_for('admin.update_retention') }}" class="retention-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label class="field-label" for="retention_days">Keep audit records for (days)</label>
+        <input
+            id="retention_days"
+            name="retention_days"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="e.g. 90"
+            value="{{ retention_days if retention_days else '' }}">
+        <button class="btn" type="submit">Save retention</button>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Recent events</h2>
+    {% if events %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+            <tr>
+                <th>Time (UTC)</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>Detail</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for ev in events %}
+            <tr>
+                <td>{{ ev.timestamp }}</td>
+                <td>{{ ev.actor }}</td>
+                <td>{{ ev.action }}</td>
+                <td>{{ ev.resource_type }} #{{ ev.resource_id }}</td>
+                <td>
+                    {% if ev.detail %}
+                    <code>{{ ev.detail | tojson }}</code>
+                    {% else %}
+                    <span class="empty">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <nav class="pager" aria-label="Audit log pagination">
+        {% if page > 1 %}
+        <a class="btn btn-secondary" href="{{ url_for('admin.audit_dashboard', page=page-1) }}">Previous</a>
+        {% endif %}
+        <span class="pager-page">Page {{ page }}</span>
+        {% if has_next %}
+        <a class="btn btn-secondary" href="{{ url_for('admin.audit_dashboard', page=page+1) }}">Next</a>
+        {% endif %}
+    </nav>
+    {% else %}
+    <p class="empty">No audit events recorded yet.</p>
+    {% endif %}
+</section>
+{% endblock %}
