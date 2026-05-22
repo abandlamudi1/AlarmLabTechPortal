@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In — Lab Tech Portal{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <div class="card login-card">
+        <div class="login-header">
+            <h1 class="login-title">Lab Tech Portal</h1>
+            <p class="login-sub">Sign in to continue</p>
+        </div>
+
+        {% if error %}
+        <div class="notice notice-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('local_login') }}" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+            <div class="form-field">
+                <label for="username">Username</label>
+                <input id="username" name="username" type="text" autocomplete="username"
+                       autofocus required value="{{ username or '' }}">
+            </div>
+            <div class="form-field">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <button class="btn" type="submit" style="width:100%;">Sign In</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

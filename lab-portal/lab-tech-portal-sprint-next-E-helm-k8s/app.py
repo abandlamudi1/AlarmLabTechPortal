@@ -18,6 +18,7 @@ import services.audit_log as _audit_log_module
 import services.metrics as _metrics_module
 import services.object_storage as _object_storage_module
 from services.okta_auth import OktaAuthError, OktaAuthService
+from services.local_auth import verify_local_user
 from services.logging_config import bind_request_context, clear_request_context, get_logger, init_logging
 from services.rbac import requires_role as _requires_role
 from celery_app import make_celery
@@ -237,8 +238,8 @@ def _init_storage(flask_app) -> None:
 _init_storage(app)
 
 if not os.environ.get("OKTA_ISSUER"):
-    app.config["LOGIN_DISABLED"] = True
-    _log.warning("Okta not configured; LOGIN_DISABLED enabled for local dev.")
+    app.config["LOCAL_AUTH"] = True
+    _log.warning("Okta not configured; falling back to local account login.")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(rf_chamber_bp, url_prefix="/rf-chamber")
 app.register_blueprint(checkout_bp, url_prefix="/checkout")
@@ -336,7 +337,7 @@ def handle_unauthorized():
 def _inject_role_flags():
     """Expose ``is_admin`` to all templates so admin-only links can be hidden.
 
-    Mirrors services.rbac: in LOGIN_DISABLED (local dev) every user is treated
+    Mirrors services.rbac: in LOCAL_AUTH mode every local user is treated
     as admin; otherwise the tier is derived from the Okta groups claim.
     """
     if current_app.config.get("LOGIN_DISABLED"):
@@ -519,13 +520,11 @@ def _clear_request_logging(_exc=None):
 
 @app.before_request
 def require_login():
-    if current_app.config.get("LOGIN_DISABLED"):
-        return None
     if not request.endpoint:
         return None
     if request.endpoint.startswith("static"):
         return None
-    if request.endpoint in {"login", "auth_callback", "logout", "healthz", "readyz", "metrics", "prometheus_metrics"}:
+    if request.endpoint in {"login", "local_login", "auth_callback", "logout", "healthz", "readyz", "metrics", "prometheus_metrics"}:
         return None
     # api_v1 blueprint handles its own auth and returns 401 JSON (not 302).
     # Exclude it here so unauthenticated API callers get JSON, not a redirect.
@@ -564,6 +563,9 @@ def resources():
 
 @app.route("/login")
 def login():
+    if current_app.config.get("LOCAL_AUTH"):
+        next_url = request.args.get("next", "")
+        return render_template("login.html", next=next_url, error=None, username=None)
     try:
         okta = _get_okta_service()
     except OktaAuthError as exc:
@@ -571,12 +573,38 @@ def login():
     next_url = request.args.get("next")
     if next_url and _is_safe_redirect(next_url):
         session["post_login_redirect"] = next_url
-
     state = okta.new_state()
     nonce = okta.new_nonce()
     session["okta_state"] = state
     session["okta_nonce"] = nonce
     return redirect(okta.get_authorization_url(state=state, nonce=nonce))
+
+
+@app.route("/local-login", methods=["POST"])
+def local_login():
+    if not current_app.config.get("LOCAL_AUTH"):
+        return redirect(url_for("login"))
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    next_url = request.form.get("next", "")
+    account = verify_local_user(username, password)
+    if not account:
+        return render_template("login.html", error="Invalid username or password.",
+                               next=next_url, username=username)
+    session["user_identity"] = {
+        "email": account["email"],
+        "display_name": account["display_name"],
+        "username": account["username"],
+        "groups": ["admin"],
+    }
+    login_user(User(
+        email=account["email"],
+        display_name=account["display_name"],
+        username=account["username"],
+    ))
+    if next_url and _is_safe_redirect(next_url):
+        return redirect(next_url)
+    return redirect(url_for("home"))
 
 
 @app.route("/auth/callback")
