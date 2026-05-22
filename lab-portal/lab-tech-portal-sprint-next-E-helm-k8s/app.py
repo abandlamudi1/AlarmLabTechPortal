@@ -18,7 +18,7 @@ import services.audit_log as _audit_log_module
 import services.metrics as _metrics_module
 import services.object_storage as _object_storage_module
 from services.okta_auth import OktaAuthError, OktaAuthService
-from services.local_auth import verify_local_user, create_local_user
+from services.local_auth import verify_local_user, create_local_user, get_user_groups
 from services.logging_config import bind_request_context, clear_request_context, get_logger, init_logging
 from services.rbac import requires_role as _requires_role
 from celery_app import make_celery
@@ -239,6 +239,10 @@ _init_storage(app)
 
 if not os.environ.get("OKTA_ISSUER"):
     app.config["LOCAL_AUTH"] = True
+    # Map local role names to RBAC tiers so get_user_tier() resolves correctly.
+    app.config.setdefault("RBAC_ADMIN_GROUPS", "admin")
+    app.config.setdefault("RBAC_LAB_TECH_LEAD_GROUPS", "lab-tech-lead")
+    app.config.setdefault("RBAC_LAB_TECH_GROUPS", "lab-tech")
     _log.warning("Okta not configured; falling back to local account login.")
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(rf_chamber_bp, url_prefix="/rf-chamber")
@@ -597,7 +601,7 @@ def local_login():
         "email": account["email"],
         "display_name": account["display_name"],
         "username": account["username"],
-        "groups": ["admin"],
+        "groups": get_user_groups(account),
     }
     login_user(User(
         email=account["email"],
@@ -631,7 +635,7 @@ def register():
         "email": account["email"],
         "display_name": account["display_name"],
         "username": account["username"],
-        "groups": ["admin"],
+        "groups": get_user_groups(account),
     }
     login_user(User(
         email=account["email"],

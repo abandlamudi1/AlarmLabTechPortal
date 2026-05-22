@@ -3,7 +3,7 @@
     "username": "dev",
     "password_hash": "scrypt:32768:8:1$KqFALBr42d34HbDK$6404c01bb7f2c2e7b28d6ed887a5e31b9cbd4ce3b043d2695b4937493941106ce8ee33e4d23402fff7dac561e72b4016b9f17f776ddf766f99bad2cb59fa63bb",
     "display_name": "dev",
-    "email": "dev@local"
+    "email": "dev@local",
+    "role": "admin"
   }
-
 }
