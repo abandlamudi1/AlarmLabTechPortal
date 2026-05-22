@@ -55,6 +55,9 @@
     </div>
     <ul class="secondary-links">
         <li><a href="{{ url_for('admin.audit_dashboard') }}">Audit Log &amp; Retention</a></li>
+        {% if local_auth %}
+        <li><a href="{{ url_for('admin.manage_accounts') }}">Manage Accounts</a></li>
+        {% endif %}
     </ul>
 </section>
 {% endif %}

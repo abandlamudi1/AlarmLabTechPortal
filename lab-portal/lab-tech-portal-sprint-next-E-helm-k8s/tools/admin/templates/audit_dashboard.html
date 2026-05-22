@@ -16,6 +16,20 @@
     <p>Review security-sensitive activity, see who's active, and control how long records are kept.</p>
 </section>
 
+{% if purge_warning %}
+<div class="audit-alert audit-alert-warning">
+    <strong>Purge warning:</strong>
+    {% if purge_in_days == 0 %}
+        The oldest audit events will be purged <strong>today</strong>.
+    {% elif purge_in_days == 1 %}
+        The oldest audit events will be purged <strong>tomorrow</strong>.
+    {% else %}
+        The oldest audit events will be purged in <strong>{{ purge_in_days }} days</strong>.
+    {% endif %}
+    You can adjust the retention period below.
+</div>
+{% endif %}
+
 {% if message %}
 <div class="audit-alert audit-alert-{{ status or 'info' }}">
     {{ message }}

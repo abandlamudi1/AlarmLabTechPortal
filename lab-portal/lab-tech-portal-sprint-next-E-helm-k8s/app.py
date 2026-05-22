@@ -344,14 +344,16 @@ def _inject_role_flags():
     Mirrors services.rbac: in LOCAL_AUTH mode every local user is treated
     as admin; otherwise the tier is derived from the Okta groups claim.
     """
+    local_auth = bool(current_app.config.get("LOCAL_AUTH"))
     if current_app.config.get("LOGIN_DISABLED"):
-        return {"is_admin": True}
+        return {"is_admin": True, "local_auth": local_auth}
     identity = session.get("user_identity") or {}
     if not identity:
-        return {"is_admin": False}
+        return {"is_admin": False, "local_auth": local_auth}
     from services.rbac import get_user_tier
 
-    return {"is_admin": get_user_tier(identity.get("groups", [])) == "admin"}
+    return {"is_admin": get_user_tier(identity.get("groups", [])) == "admin",
+            "local_auth": local_auth}
 
 
 def _is_safe_redirect(target: str) -> bool:
@@ -547,9 +549,9 @@ def require_login():
 
 @app.route("/")
 def home():
-    # If the user is authenticated show the dashboard, otherwise redirect
-    # to the login page so unauthenticated visitors land on sign-in.
-    if current_user.is_authenticated:
+    # If the user is authenticated (or auth is disabled in test mode) show the
+    # dashboard, otherwise redirect to the login page.
+    if current_app.config.get("LOGIN_DISABLED") or current_user.is_authenticated:
         return render_template("index.html")
     return redirect(url_for("login"))
 

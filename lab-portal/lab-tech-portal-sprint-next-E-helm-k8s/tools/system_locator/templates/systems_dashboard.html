@@ -346,10 +346,17 @@
             {% endif %}
             <div class="form-actions">
                 <a class="btn btn-secondary" href="{{ url_for('systems.edit_system', system_id=system.id) }}">Edit</a>
+                {% if system.status == 'Decommissioned' %}
+                <form method="post" action="{{ url_for('systems.recommission_system', system_id=system.id) }}" onsubmit="return confirm('Mark this system profile as active again?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn" type="submit">Recommission</button>
+                </form>
+                {% else %}
                 <form method="post" action="{{ url_for('systems.delete_system', system_id=system.id) }}" onsubmit="return confirm('Mark this system profile as decommissioned?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn btn-danger" type="submit">Decommission</button>
                 </form>
+                {% endif %}
             </div>
         </article>
         {% endfor %}

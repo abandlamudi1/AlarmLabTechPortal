@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Accounts — Admin{% endblock %}
+
+{% block page_styles %}
+<link rel="stylesheet" href="{{ url_for('admin.static', filename='style.css') }}">
+{% endblock %}
+
+{% block toolbar_primary %}
+<a href="{{ url_for('home') }}">Home</a>
+<a href="{{ url_for('admin.audit_dashboard') }}">Audit Log</a>
+{% endblock %}
+
+{% block content %}
+<section class="card hero">
+    <h1>Manage Accounts</h1>
+    <p>View all local accounts and change their roles. Changes take effect on next login.</p>
+</section>
+
+{% if request.args.get('message') %}
+<div class="audit-alert audit-alert-{{ request.args.get('status', 'info') }}">
+    {{ request.args.get('message') }}
+</div>
+{% endif %}
+
+<section class="card">
+    <h2>Accounts</h2>
+    {% if accounts %}
+    <div class="table-wrapper">
+        <table class="accounts-table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Display Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Change Role</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for username, account in accounts.items() %}
+            <tr>
+                <td><strong>{{ username }}</strong></td>
+                <td>{{ account.display_name }}</td>
+                <td>{{ account.email }}</td>
+                <td>
+                    <span class="status-tag {% if account.role == 'admin' %}status-active{% elif account.role == 'viewer' %}status-decommissioned{% else %}status-maintenance{% endif %}">
+                        {{ account.role or 'viewer' }}
+                    </span>
+                </td>
+                <td>
+                    <form method="post" action="{{ url_for('admin.update_account_role', username=username) }}" class="role-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="role">
+                            {% for role in roles %}
+                            <option value="{{ role }}" {% if (account.role or 'viewer') == role %}selected{% endif %}>{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn btn-secondary" type="submit" style="padding: 6px 14px; font-size: 0.85rem;">Save</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="empty">No local accounts found.</p>
+    {% endif %}
+</section>
+{% endblock %}

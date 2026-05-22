@@ -436,12 +436,24 @@ def edit_system(system_id: int):
 @systems_bp.post("/<int:system_id>/delete")
 def delete_system(system_id: int):
     db.delete_system(system_id)
+    actor = (session.get("user_identity") or {}).get("email", "<unknown>")
+    _audit(actor=actor, action="system_locator.decommission",
+           resource_type="system", resource_id=system_id, detail={})
     return redirect(
-        url_for(
-            "systems.dashboard",
-            status="success",
-            message="System Profile decommissioned successfully.",
-        )
+        url_for("systems.dashboard", status="success",
+                message="System Profile decommissioned successfully.")
+    )
+
+
+@systems_bp.post("/<int:system_id>/recommission")
+def recommission_system(system_id: int):
+    db.recommission_system(system_id)
+    actor = (session.get("user_identity") or {}).get("email", "<unknown>")
+    _audit(actor=actor, action="system_locator.recommission",
+           resource_type="system", resource_id=system_id, detail={})
+    return redirect(
+        url_for("systems.dashboard", status="success",
+                message="System Profile recommissioned successfully.")
     )
 
 

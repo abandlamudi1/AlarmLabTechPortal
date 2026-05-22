@@ -21,6 +21,15 @@
     color: var(--notice-error-text);
 }
 
+.audit-alert-warning {
+    background-color: rgba(255, 159, 10, 0.1);
+    border-color: rgba(255, 159, 10, 0.4);
+    color: var(--status-warning-color);
+}
+
+.accounts-table td, .accounts-table th { vertical-align: middle; }
+.role-form { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+
 .stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

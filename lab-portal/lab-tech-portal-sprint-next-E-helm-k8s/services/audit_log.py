@@ -215,6 +215,23 @@ def get_activity_summary(days: int = 30, limit: int = 50) -> List[Dict[str, Any]
     return [{"action": row["action"], "count": int(row["count"])} for row in rows]
 
 
+def get_oldest_event_age_days() -> Optional[int]:
+    """Return the age in days of the oldest audit event, or None if no events."""
+    with _get_connection() as conn:
+        row = conn.execute("SELECT MIN(timestamp) AS oldest FROM audit_events").fetchone()
+    if not row or not row["oldest"]:
+        return None
+    from datetime import datetime, timezone
+    try:
+        oldest = datetime.fromisoformat(row["oldest"].replace("Z", "+00:00"))
+        if oldest.tzinfo is None:
+            oldest = oldest.replace(tzinfo=timezone.utc)
+        delta = datetime.now(timezone.utc) - oldest
+        return max(0, delta.days)
+    except (ValueError, AttributeError):
+        return None
+
+
 def get_retention_days() -> Optional[int]:
     """Return the configured retention window in days, or None if disabled.
 

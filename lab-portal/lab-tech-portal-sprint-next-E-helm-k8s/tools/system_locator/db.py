@@ -206,6 +206,14 @@ def delete_system(system_id: int) -> None:
         )
 
 
+def recommission_system(system_id: int) -> None:
+    with _get_connection() as conn:
+        conn.execute(
+            "UPDATE systems SET status = ? WHERE id = ?",
+            ("Active", system_id),
+        )
+
+
 def hard_delete_system(system_id: int) -> None:
     """Permanently delete a system profile and all its identifiers."""
     with _get_connection() as conn:
