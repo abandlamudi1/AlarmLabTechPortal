@@ -18,7 +18,7 @@ import services.audit_log as _audit_log_module
 import services.metrics as _metrics_module
 import services.object_storage as _object_storage_module
 from services.okta_auth import OktaAuthError, OktaAuthService
-from services.local_auth import verify_local_user
+from services.local_auth import verify_local_user, create_local_user
 from services.logging_config import bind_request_context, clear_request_context, get_logger, init_logging
 from services.rbac import requires_role as _requires_role
 from celery_app import make_celery
@@ -526,7 +526,7 @@ def require_login():
         return None
     if request.endpoint.startswith("static"):
         return None
-    if request.endpoint in {"login", "local_login", "auth_callback", "logout", "healthz", "readyz", "metrics", "prometheus_metrics"}:
+    if request.endpoint in {"login", "local_login", "register", "auth_callback", "logout", "healthz", "readyz", "metrics", "prometheus_metrics"}:
         return None
     # api_v1 blueprint handles its own auth and returns 401 JSON (not 302).
     # Exclude it here so unauthenticated API callers get JSON, not a redirect.
@@ -606,6 +606,38 @@ def local_login():
     ))
     if next_url and _is_safe_redirect(next_url):
         return redirect(next_url)
+    return redirect(url_for("home"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if not current_app.config.get("LOCAL_AUTH"):
+        return redirect(url_for("login"))
+    if request.method == "GET":
+        return render_template("register.html", error=None, form={})
+    username = request.form.get("username", "").strip()
+    display_name = request.form.get("display_name", "").strip()
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+    confirm = request.form.get("confirm_password", "")
+    form = {"username": username, "display_name": display_name, "email": email}
+    if password != confirm:
+        return render_template("register.html", error="Passwords do not match.", form=form)
+    error = create_local_user(username, display_name, email, password)
+    if error:
+        return render_template("register.html", error=error, form=form)
+    account = verify_local_user(username, password)
+    session["user_identity"] = {
+        "email": account["email"],
+        "display_name": account["display_name"],
+        "username": account["username"],
+        "groups": ["admin"],
+    }
+    login_user(User(
+        email=account["email"],
+        display_name=account["display_name"],
+        username=account["username"],
+    ))
     return redirect(url_for("home"))
 
 
