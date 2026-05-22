@@ -17,8 +17,14 @@ import json
 import os
 import sqlite3
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterator, List, Optional
+
+# Python 3.11 compatibility: UTC moved from datetime module to timezone
+try:
+    from datetime import UTC
+except ImportError:
+    UTC = timezone.utc
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # Module-level path; overridden by init_app() at startup so tests can

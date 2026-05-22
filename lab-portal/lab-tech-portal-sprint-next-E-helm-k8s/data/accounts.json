@@ -1,0 +1,16 @@
+{
+  "brice": {
+    "username": "brice",
+    "display_name": "bricefiles",
+    "email": "malekgswilam@gmail.com",
+    "password_hash": "scrypt:32768:8:1$NFripqv0fniCbrw0$9051e3d5efed6fcdfff8cc702b8d74701e10c2c41ab548ddd6aae532c15f7544ba445d612bd062796d1221456e5ccdfa4f04da49342e00db8fe0cf4220f8b433",
+    "role": "viewer"
+  },
+  "dev": {
+    "username": "dev",
+    "display_name": "dev",
+    "email": "dev@dev.dev",
+    "password_hash": "scrypt:32768:8:1$vhNiwBEVuRqAu5zk$2289e5495d7446a2338e21a5fc75c28a1d08e861e47b3dc1eb2349477c1c55f4f9e9b7337931686300114cbda6addd7b04dbfe621caeded9b01f95c11850dffc",
+    "role": "viewer"
+  }
+}

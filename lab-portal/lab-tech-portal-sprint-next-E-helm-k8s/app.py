@@ -547,7 +547,11 @@ def require_login():
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    # If the user is authenticated show the dashboard, otherwise redirect
+    # to the login page so unauthenticated visitors land on sign-in.
+    if current_user.is_authenticated:
+        return render_template("index.html")
+    return redirect(url_for("login"))
 
 
 @app.route("/resources")
@@ -569,9 +573,30 @@ def resources():
 
 @app.route("/login")
 def login():
+    # Render the shared login template in both modes. When LOCAL_AUTH is
+    # enabled the page includes the local username/password form. When Okta
+    # SSO is configured the page shows a prominent SSO button that starts the
+    # Okta flow (handled by the `/sso-login` endpoint).
+    next_url = request.args.get("next", "")
     if current_app.config.get("LOCAL_AUTH"):
-        next_url = request.args.get("next", "")
-        return render_template("login.html", next=next_url, error=None, username=None)
+        return render_template("login.html", next=next_url, error=None, username=None, show_sso=False)
+    # Okta configured: surface a Sign in (SSO) button instead of auto-redirect
+    try:
+        _get_okta_service()
+    except OktaAuthError as exc:
+        return f"Okta configuration error: {exc}", 500
+    return render_template("login.html", next=next_url, error=None, username=None, show_sso=True)
+
+
+
+@app.route("/sso-login")
+def sso_login():
+    """Start the Okta authorization flow and redirect the user to Okta.
+
+    Mirrors the previous logic embedded in `/login()` but exposed as a
+    dedicated endpoint so the login page can render an SSO button that hits
+    this route.
+    """
     try:
         okta = _get_okta_service()
     except OktaAuthError as exc:

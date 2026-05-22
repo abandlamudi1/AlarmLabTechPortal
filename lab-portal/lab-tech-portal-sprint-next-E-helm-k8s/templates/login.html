@@ -14,6 +14,11 @@
         <div class="notice notice-error">{{ error }}</div>
         {% endif %}
 
+        {% if show_sso %}
+        <div style="text-align:center;">
+            <a class="btn" href="{{ url_for('sso_login', next=next) }}" style="width:100%; display:inline-block;">Sign in with Okta</a>
+        </div>
+        {% else %}
         <form method="post" action="{{ url_for('local_login') }}" class="login-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% if next %}
@@ -30,6 +35,7 @@
             </div>
             <button class="btn" type="submit" style="width:100%;">Sign In</button>
         </form>
+        {% endif %}
 
         <p style="margin-top:16px; text-align:center; font-size:0.875rem; color:var(--muted-text);">
             No account? <a href="{{ url_for('register') }}">Create one</a>
