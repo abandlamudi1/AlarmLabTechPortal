@@ -520,6 +520,8 @@ def _clear_request_logging(_exc=None):
 
 @app.before_request
 def require_login():
+    if current_app.config.get("LOGIN_DISABLED"):
+        return None
     if not request.endpoint:
         return None
     if request.endpoint.startswith("static"):
